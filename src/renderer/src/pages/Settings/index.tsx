@@ -5,6 +5,7 @@
  * открыты одновременно (type="multiple"); по умолчанию первая раскрытая —
  * «Безопасность» (часто запрашиваемая настройка), остальные свёрнуты.
  */
+import { useTranslation } from 'react-i18next'
 import { useShellTitle } from '@/components/Layout/AppShell'
 import {
   Accordion,
@@ -19,7 +20,8 @@ import { BackupSettings } from '@/components/Settings/BackupSettings'
 import { TrashSettings } from '@/components/Settings/TrashSettings'
 
 export default function SettingsPage() {
-  useShellTitle('Настройки')
+  const { t } = useTranslation()
+  useShellTitle(t('nav.settings'))
 
   return (
     <div className="mx-auto h-full max-w-2xl overflow-auto p-6">
@@ -29,35 +31,35 @@ export default function SettingsPage() {
         className="w-full"
       >
         <AccordionItem value="security">
-          <AccordionTrigger>Безопасность</AccordionTrigger>
+          <AccordionTrigger>{t('settings.security')}</AccordionTrigger>
           <AccordionContent>
             <SecuritySettings />
           </AccordionContent>
         </AccordionItem>
 
         <AccordionItem value="colors">
-          <AccordionTrigger>Цвета заметок</AccordionTrigger>
+          <AccordionTrigger>{t('settings.colors')}</AccordionTrigger>
           <AccordionContent>
             <ColorPaletteSettings />
           </AccordionContent>
         </AccordionItem>
 
         <AccordionItem value="medications">
-          <AccordionTrigger>Медикаменты — пресеты</AccordionTrigger>
+          <AccordionTrigger>{t('settings.medications')}</AccordionTrigger>
           <AccordionContent>
             <MedicationPresetsSettings />
           </AccordionContent>
         </AccordionItem>
 
         <AccordionItem value="data">
-          <AccordionTrigger>Резервные копии и экспорт</AccordionTrigger>
+          <AccordionTrigger>{t('settings.backups')}</AccordionTrigger>
           <AccordionContent>
             <BackupSettings />
           </AccordionContent>
         </AccordionItem>
 
         <AccordionItem value="trash">
-          <AccordionTrigger>Корзина</AccordionTrigger>
+          <AccordionTrigger>{t('settings.trash')}</AccordionTrigger>
           <AccordionContent>
             <TrashSettings />
           </AccordionContent>

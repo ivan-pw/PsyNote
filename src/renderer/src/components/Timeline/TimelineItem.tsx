@@ -15,6 +15,8 @@
  * Все интерактивные события открываются через onOpen(kind, event).
  * client_created остаётся не-кликабельным.
  */
+import { useTranslation } from 'react-i18next'
+import type { TFunction } from 'i18next'
 import {
   CalendarCheck,
   Eraser,
@@ -32,20 +34,20 @@ import { HISTORIZED_FIELD_META, isHistorizedField } from '@/lib/historized'
 import { medicationsToText } from '@/lib/medications'
 import type { TimelineEvent } from '@shared/types'
 
-const MEETING_STATUS_LABEL: Record<string, string> = {
-  planned: 'Запланирована',
-  done: 'Проведена',
-  cancelled: 'Отменена'
+const MEETING_STATUS_KEY: Record<string, string> = {
+  planned: 'meeting.status.planned',
+  done: 'meeting.status.done',
+  cancelled: 'meeting.status.cancelled'
 }
 
-const NOTE_ACTION_LABEL: Record<string, string> = {
-  create: 'Заметка создана',
-  update: 'Заметка изменена',
-  delete: 'Заметка удалена'
+const NOTE_ACTION_KEY: Record<string, string> = {
+  create: 'timeline.note.create',
+  update: 'timeline.note.update',
+  delete: 'timeline.note.delete'
 }
 
-function fieldLabel(key: string | null): string {
-  if (key && isHistorizedField(key)) return HISTORIZED_FIELD_META[key].label
+function fieldLabel(key: string | null, t: TFunction): string {
+  if (key && isHistorizedField(key)) return t(HISTORIZED_FIELD_META[key].label)
   return key ?? ''
 }
 
@@ -86,11 +88,13 @@ function pickAccent(ev: TimelineEvent): string {
   }
 }
 
-function renderTitle(ev: TimelineEvent): React.ReactNode {
+function renderTitle(ev: TimelineEvent, t: TFunction): React.ReactNode {
   switch (ev.kind) {
     case 'meeting': {
-      const status = ev.aux1 ? MEETING_STATUS_LABEL[ev.aux1] ?? ev.aux1 : 'Встреча'
-      return <span>Встреча — {status}</span>
+      if (!ev.aux1) return <span>{t('meeting.title')}</span>
+      const statusKey = MEETING_STATUS_KEY[ev.aux1]
+      const status = statusKey ? t(statusKey) : ev.aux1
+      return <span>{t('timeline.meeting_status', { status })}</span>
     }
     case 'revision': {
       const fkey = ev.aux1
@@ -101,34 +105,37 @@ function renderTitle(ev: TimelineEvent): React.ReactNode {
           ? null
           : medicationsToText(ev.payload_text)
         : ev.payload_text
-      const label = fieldLabel(fkey)
+      const label = fieldLabel(fkey, t)
       if (next === null) {
         return (
           <span>
-            Очищено: <strong>{label}</strong>
+            {t('timeline.cleared')}: <strong>{label}</strong>
             {prev && (
-              <span className="text-muted-foreground"> · было «{truncate(prev, 60)}»</span>
+              <span className="text-muted-foreground">
+                {' '}
+                · {t('timeline.was', { value: truncate(prev, 60) })}
+              </span>
             )}
           </span>
         )
       }
       return (
         <span>
-          Изменено: <strong>{label}</strong>
+          {t('timeline.changed')}: <strong>{label}</strong>
           <span className="text-muted-foreground"> · «{truncate(next, 80)}»</span>
         </span>
       )
     }
     case 'anamnesis':
-      return <span>Анамнез</span>
+      return <span>{t('anamnesis.title')}</span>
     case 'note_event': {
-      const label = ev.aux1 ? NOTE_ACTION_LABEL[ev.aux1] ?? 'Заметка' : 'Заметка'
-      return <span>{label}</span>
+      const key = ev.aux1 ? NOTE_ACTION_KEY[ev.aux1] : undefined
+      return <span>{key ? t(key) : t('notes.note')}</span>
     }
     case 'protocol':
-      return <span>Протокол встречи</span>
+      return <span>{t('protocol.title')}</span>
     case 'client_created':
-      return <span>Клиент создан</span>
+      return <span>{t('timeline.client_created')}</span>
   }
 }
 
@@ -139,6 +146,7 @@ type Props = {
 }
 
 export function TimelineItem({ event, onOpen }: Props) {
+  const { t } = useTranslation()
   const Icon = pickIcon(event)
   const accent = pickAccent(event)
   const isRevision = event.kind === 'revision'
@@ -159,7 +167,7 @@ export function TimelineItem({ event, onOpen }: Props) {
       </div>
       <div className="min-w-0 flex-1 pb-4">
         <div className="text-xs text-muted-foreground">{formatDateTime(event.at)}</div>
-        <div className="mt-0.5 text-sm">{renderTitle(event)}</div>
+        <div className="mt-0.5 text-sm">{renderTitle(event, t)}</div>
         {event.kind === 'meeting' && event.payload_text && (
           <div className="mt-1 text-sm text-muted-foreground">{event.payload_text}</div>
         )}
@@ -175,7 +183,7 @@ export function TimelineItem({ event, onOpen }: Props) {
         )}
         {isRevision && event.extra && (
           <div className="mt-1 text-xs italic text-muted-foreground">
-            Комментарий: {event.extra}
+            {t('revision.comment')}: {event.extra}
           </div>
         )}
       </div>

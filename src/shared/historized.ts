@@ -14,7 +14,8 @@ export const HISTORIZED_FIELDS = [
   'messenger',
   'video_link',
   'diagnosis',
-  'medications'
+  'medications',
+  'doctor'
 ] as const
 
 export type HistorizedField = (typeof HISTORIZED_FIELDS)[number]

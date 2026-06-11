@@ -43,10 +43,18 @@ export type SecurityFlags = {
   weakPasswordDetected: boolean
 }
 
+export type EulaStatus = {
+  acceptedVersion: number | null
+}
+
 export type Api = {
   app: {
     getInfo(): Promise<AppInfo>
     quit(): Promise<void>
+  }
+  eula: {
+    status(): Promise<EulaStatus>
+    accept(version: number): Promise<void>
   }
   auth: {
     getStatus(): Promise<AuthStatus>
@@ -163,6 +171,11 @@ export type Api = {
     list(): Promise<BackupInfo[]>
     createNow(): Promise<BackupInfo>
     delete(path: string): Promise<void>
+    /**
+     * Восстановить БД из бэкапа: main закрывает БД, подменяет файлы и
+     * перезапускает приложение. Promise может не успеть зарезолвиться.
+     */
+    restore(path: string): Promise<void>
     /** Возвращает путь, куда пользователь сохранил JSON, либо null если отменил. */
     exportJson(): Promise<string | null>
   }

@@ -46,19 +46,21 @@ export default function App() {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <TooltipProvider delayDuration={200}>
-          <AutoLockGuard>
-            {loading ? (
-              <div className="flex min-h-screen items-center justify-center">
-                <div className="text-sm text-muted-foreground">Загрузка…</div>
-              </div>
-            ) : (
-              <EulaGate>
+          {/* EulaGate — снаружи: соглашение принимается до setup/unlock,
+              его статус хранится в plain-файле и не требует открытой БД. */}
+          <EulaGate>
+            <AutoLockGuard>
+              {loading ? (
+                <div className="flex min-h-screen items-center justify-center">
+                  <div className="text-sm text-muted-foreground">Загрузка…</div>
+                </div>
+              ) : (
                 <WeakPasswordGate>
                   <AppRouter />
                 </WeakPasswordGate>
-              </EulaGate>
-            )}
-          </AutoLockGuard>
+              )}
+            </AutoLockGuard>
+          </EulaGate>
           <Toaster />
         </TooltipProvider>
       </ThemeProvider>

@@ -1,18 +1,19 @@
 /**
  * src/renderer/src/pages/ClientDetail/index.tsx
  *
- * Страница карточки клиента (plan §6.3).
+ * Страница карточки клиента.
  *
  *   ┌─────────────────────────────┬─────────────────────────┐
- *   │                             │  PermanentFields        │
- *   │    ClientTimeline           │  (диагноз, медикаменты, │
- *   │    (события по убыванию)    │   мессенджер, ...)      │
- *   │                             │  + Новый анамнез        │
- *   │                             ├─────────────────────────┤
- *   │                             │  NotesPanel             │
+ *   │  SessionsList               │ ▸ Информация о клиенте  │
+ *   │  (карточки сессий,          │ ▸ Заметки               │
+ *   │   последняя — сверху)       │ ▸ История изменений     │
+ *   │                             │   (ClientTimeline)      │
  *   └─────────────────────────────┴─────────────────────────┘
  *
- * Все события таймлайна (кроме client_created) кликабельны и открывают
+ * Главный экран — проведённые сессии (повестка + домашка в каждой карточке).
+ * Сайдбар — раскрывающиеся секции: информация о клиенте, заметки и история.
+ *
+ * Все события истории (кроме client_created) кликабельны и открывают
  * соответствующий диалог. Универсальный dispatch — ниже в openTimeline().
  *
  * Кнопка «В архив» спрашивает подтверждение через ConfirmDestructiveDialog,
@@ -20,7 +21,15 @@
  */
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, Archive, ArchiveRestore } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
+import {
+  ArrowLeft,
+  Archive,
+  ArchiveRestore,
+  History,
+  IdCard,
+  StickyNote
+} from 'lucide-react'
 import {
   useArchiveClient,
   useClient,
@@ -29,8 +38,15 @@ import {
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { toast } from '@/components/ui/sonner'
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger
+} from '@/components/ui/accordion'
 import { useShellTitle } from '@/components/Layout/AppShell'
 import { ClientTimeline } from '@/components/Timeline/ClientTimeline'
+import { SessionsList } from '@/components/Sessions/SessionsList'
 import { PermanentFieldsPanel } from '@/components/ClientFields/PermanentFieldsPanel'
 import { AnamnesisDialog } from '@/components/AnamnesisDialog'
 import { ConfirmDestructiveDialog } from '@/components/ConfirmDestructiveDialog'
@@ -45,6 +61,7 @@ import { RevisionEditDialog } from '@/components/ClientFields/RevisionEditDialog
 import { meetingsApi } from '@/api/meetings'
 import { notesApi } from '@/api/notes'
 import { formatDate } from '@/lib/format'
+import { clientAge, formatAge } from '@/lib/age'
 import type { Meeting, Note, TimelineEvent } from '@shared/types'
 
 type AnamnesisState =
@@ -64,6 +81,7 @@ type RevisionDialogState = {
 type ProtocolDialogState = { open: boolean; meetingId: number }
 
 export default function ClientDetailPage() {
+  const { t } = useTranslation()
   const { id: idParam } = useParams<{ id: string }>()
   const id = idParam ? Number(idParam) : null
   const navigate = useNavigate()
@@ -78,7 +96,7 @@ export default function ClientDetailPage() {
   const [revision, setRevision] = useState<RevisionDialogState | null>(null)
   const [confirmArchive, setConfirmArchive] = useState(false)
 
-  useShellTitle(client?.full_name ?? 'Клиент')
+  useShellTitle(client?.full_name ?? t('client.title'))
 
   // Заранее «прогреваем» нужные сущности на запрос. Загружаются по факту.
   useEffect(() => {
@@ -87,17 +105,17 @@ export default function ClientDetailPage() {
 
   if (id === null || Number.isNaN(id)) {
     return (
-      <div className="p-6 text-sm text-destructive">Неверный идентификатор клиента</div>
+      <div className="p-6 text-sm text-destructive">{t('client.invalid_id')}</div>
     )
   }
 
   if (isLoading) {
-    return <div className="p-6 text-sm text-muted-foreground">Загрузка…</div>
+    return <div className="p-6 text-sm text-muted-foreground">{t('app.loading')}</div>
   }
   if (error || !client) {
     return (
       <div className="p-6 text-sm text-destructive">
-        {error instanceof Error ? error.message : 'Клиент не найден'}
+        {error instanceof Error ? error.message : t('client.not_found')}
       </div>
     )
   }
@@ -119,7 +137,7 @@ export default function ClientDetailPage() {
               // Фоллбэк — listByClient (медленнее, но не зависит от точности at)
               const all = await meetingsApi.listByClient(ev.client_id)
               const found = all.find((x) => x.id === ev.ref_id)
-              if (!found) throw new Error('Встреча не найдена')
+              if (!found) throw new Error(t('meeting.not_found'))
               return found
             })
           setMeetingDialog({ mode: 'edit', meeting: m })
@@ -132,13 +150,13 @@ export default function ClientDetailPage() {
           const noteId = ev.extra ? Number(ev.extra) : NaN
           if (Number.isNaN(noteId) || ev.aux1 === 'delete') {
             // Удалённая заметка → редактировать нечего, показываем тост.
-            toast.info('Заметка уже удалена — открывать нечего')
+            toast.info(t('notes.already_deleted_nothing'))
             return
           }
           const all = await notesApi.listByClient(ev.client_id)
           const note: Note | undefined = all.find((n) => n.id === noteId)
           if (!note) {
-            toast.info('Заметка уже удалена')
+            toast.info(t('notes.already_deleted'))
             return
           }
           setNoteDialog({ mode: 'edit', note })
@@ -147,7 +165,7 @@ export default function ClientDetailPage() {
         case 'protocol': {
           const meetingId = ev.aux1 ? Number(ev.aux1) : NaN
           if (Number.isNaN(meetingId)) {
-            toast.error('Не удалось определить встречу протокола')
+            toast.error(t('protocol.cannot_find_meeting'))
             return
           }
           setProtocol({ open: true, meetingId })
@@ -180,7 +198,7 @@ export default function ClientDetailPage() {
           <Button
             variant="ghost"
             size="icon"
-            aria-label="Назад"
+            aria-label={t('common.back')}
             onClick={() => navigate('/clients')}
           >
             <ArrowLeft className="size-4" />
@@ -188,11 +206,20 @@ export default function ClientDetailPage() {
           <div className="flex flex-col">
             <div className="flex items-center gap-2">
               <h2 className="text-lg font-semibold tracking-tight">{client.full_name}</h2>
-              {archived && <Badge variant="secondary">в архиве</Badge>}
+              {archived && <Badge variant="secondary">{t('clients.archived_badge')}</Badge>}
             </div>
             <div className="text-xs text-muted-foreground">
-              {client.birth_date && <>род. {formatDate(client.birth_date)} · </>}
-              создан {formatDate(client.created_at)}
+              {(() => {
+                const age = clientAge(client.birth_date, client.birth_year)
+                return age ? (
+                  <>
+                    {formatAge(age.years, age.approximate)}
+                    {client.birth_date && <> ({t('client.born', { date: formatDate(client.birth_date) })})</>}
+                    {' · '}
+                  </>
+                ) : null
+              })()}
+              {t('client.created', { date: formatDate(client.created_at) })}
             </div>
           </div>
           <div className="ml-auto flex gap-2">
@@ -206,7 +233,7 @@ export default function ClientDetailPage() {
                 })
               }
             >
-              + Встреча
+              {t('client.add_meeting')}
             </Button>
             {archived ? (
               <Button
@@ -215,7 +242,7 @@ export default function ClientDetailPage() {
                 onClick={() => restore.mutate(client.id)}
               >
                 <ArchiveRestore className="size-4" />
-                Восстановить
+                {t('common.restore')}
               </Button>
             ) : (
               <Button
@@ -224,23 +251,75 @@ export default function ClientDetailPage() {
                 onClick={() => setConfirmArchive(true)}
               >
                 <Archive className="size-4" />
-                В архив
+                {t('common.archive')}
               </Button>
             )}
           </div>
         </div>
-        <div className="min-h-0 flex-1">
-          <ClientTimeline clientId={client.id} onOpen={openTimeline} />
+        <div className="min-h-0 flex-1 overflow-auto">
+          <SessionsList
+            clientId={client.id}
+            onCreateMeeting={() =>
+              setMeetingDialog({
+                mode: 'create',
+                preset: { clientId: client.id, start: new Date() }
+              })
+            }
+            onEditMeeting={(m) => setMeetingDialog({ mode: 'edit', meeting: m })}
+            onOpenProtocol={(meetingId) => setProtocol({ open: true, meetingId })}
+          />
         </div>
       </div>
 
-      {/* Правая колонка — поля + заметки */}
-      <div className="flex h-full flex-col gap-3 overflow-auto p-4">
-        <PermanentFieldsPanel
-          client={client}
-          onAddAnamnesis={() => setAnamnesis({ open: true, anamnesisId: null })}
-        />
-        <NotesPanel clientId={client.id} />
+      {/* Правая колонка — информация о клиенте, заметки, история изменений */}
+      <div className="h-full overflow-auto px-4 py-2">
+        <Accordion
+          type="multiple"
+          defaultValue={['info', 'notes']}
+          className="w-full"
+        >
+          <AccordionItem value="info">
+            <AccordionTrigger>
+              <span className="flex items-center gap-2">
+                <IdCard className="size-4 text-muted-foreground" />
+                {t('client.info_section')}
+              </span>
+            </AccordionTrigger>
+            <AccordionContent>
+              <PermanentFieldsPanel
+                client={client}
+                onAddAnamnesis={() => setAnamnesis({ open: true, anamnesisId: null })}
+              />
+            </AccordionContent>
+          </AccordionItem>
+
+          <AccordionItem value="notes">
+            <AccordionTrigger>
+              <span className="flex items-center gap-2">
+                <StickyNote className="size-4 text-muted-foreground" />
+                {t('notes.title')}
+              </span>
+            </AccordionTrigger>
+            <AccordionContent>
+              <NotesPanel clientId={client.id} />
+            </AccordionContent>
+          </AccordionItem>
+
+          <AccordionItem value="history">
+            <AccordionTrigger>
+              <span className="flex items-center gap-2">
+                <History className="size-4 text-muted-foreground" />
+                {t('client.history_section')}
+              </span>
+            </AccordionTrigger>
+            <AccordionContent>
+              {/* Фиксированная высота: внутри ClientTimeline собственный скролл. */}
+              <div className="h-[32rem] overflow-hidden rounded-lg border">
+                <ClientTimeline clientId={client.id} onOpen={openTimeline} />
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
       </div>
 
       <AnamnesisDialog
@@ -290,7 +369,7 @@ export default function ClientDetailPage() {
 
       <ConfirmDestructiveDialog
         open={confirmArchive}
-        itemLabel={`Клиент «${client.full_name}» будет отправлен в архив. Восстановить можно из настроек.`}
+        itemLabel={t('client.archive_confirm', { name: client.full_name })}
         busy={archive.isPending}
         onCancel={() => setConfirmArchive(false)}
         onConfirm={async () => {

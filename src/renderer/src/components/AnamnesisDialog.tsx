@@ -9,6 +9,7 @@
  *             даём «Сохранить» / «Удалить» (с вводом подтверждающего слова).
  */
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { ConfirmDestructiveDialog } from './ConfirmDestructiveDialog'
 import { Trash2 } from 'lucide-react'
 import {
@@ -55,6 +56,7 @@ function emptyForm(): FormState {
 }
 
 export function AnamnesisDialog({ open, clientId, anamnesisId, onClose }: Props) {
+  const { t } = useTranslation()
   const isEdit = anamnesisId !== null
   const { data: existing, isLoading } = useAnamnesis(isEdit ? anamnesisId : null)
   const create = useCreateAnamnesis(clientId)
@@ -101,7 +103,7 @@ export function AnamnesisDialog({ open, clientId, anamnesisId, onClose }: Props)
     e.preventDefault()
     setError(null)
     if (!/^\d{4}-\d{2}-\d{2}$/.test(form.taken_on)) {
-      setError('Укажите дату составления анамнеза')
+      setError(t('anamnesis.date_required'))
       return
     }
     try {
@@ -132,22 +134,21 @@ export function AnamnesisDialog({ open, clientId, anamnesisId, onClose }: Props)
   return (
     <>
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-3xl">
+      {/* max-h + overflow: 7 текстовых полей не помещаются на небольших экранах,
+          поэтому контент диалога прокручивается, а не вылезает за экран. */}
+      <DialogContent className="max-h-[85vh] max-w-3xl overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{isEdit ? 'Анамнез' : 'Новый анамнез'}</DialogTitle>
-          <DialogDescription>
-            Все подполя необязательны. Несколько анамнезов на одного клиента —
-            это нормально: каждый новый снимок появляется в таймлайне отдельно.
-          </DialogDescription>
+          <DialogTitle>{isEdit ? t('anamnesis.title') : t('anamnesis.new')}</DialogTitle>
+          <DialogDescription>{t('anamnesis.description')}</DialogDescription>
         </DialogHeader>
 
         {isEdit && isLoading ? (
-          <p className="py-6 text-sm text-muted-foreground">Загрузка…</p>
+          <p className="py-6 text-sm text-muted-foreground">{t('app.loading')}</p>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-3 gap-4">
               <div className="space-y-1">
-                <Label htmlFor="taken_on">Дата</Label>
+                <Label htmlFor="taken_on">{t('anamnesis.date')}</Label>
                 <Input
                   id="taken_on"
                   type="date"
@@ -161,7 +162,7 @@ export function AnamnesisDialog({ open, clientId, anamnesisId, onClose }: Props)
             <div className="grid grid-cols-2 gap-4">
               {ANAMNESIS_FIELDS.map(({ key, label }) => (
                 <div key={key} className="col-span-2 space-y-1">
-                  <Label htmlFor={key}>{label}</Label>
+                  <Label htmlFor={key}>{t(label)}</Label>
                   <Textarea
                     id={key}
                     rows={3}
@@ -184,14 +185,14 @@ export function AnamnesisDialog({ open, clientId, anamnesisId, onClose }: Props)
                   disabled={busy}
                 >
                   <Trash2 className="size-4" />
-                  Удалить
+                  {t('common.delete')}
                 </Button>
               )}
               <Button type="button" variant="outline" onClick={onClose} disabled={busy}>
-                Отмена
+                {t('common.cancel')}
               </Button>
               <Button type="submit" disabled={busy}>
-                {busy ? '…' : isEdit ? 'Сохранить' : 'Создать'}
+                {busy ? '…' : isEdit ? t('common.save') : t('common.create')}
               </Button>
             </DialogFooter>
           </form>
@@ -201,7 +202,7 @@ export function AnamnesisDialog({ open, clientId, anamnesisId, onClose }: Props)
 
     <ConfirmDestructiveDialog
       open={confirmDelete}
-      itemLabel="Этот анамнез будет удалён навсегда."
+      itemLabel={t('anamnesis.delete_confirm')}
       busy={remove.isPending}
       onCancel={() => setConfirmDelete(false)}
       onConfirm={doDelete}

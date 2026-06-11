@@ -20,6 +20,7 @@ import {
 } from 'react-big-calendar'
 import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import {
   endOfMonth,
   endOfWeek,
@@ -50,22 +51,6 @@ const localizer = dateFnsLocalizer({
   locales
 })
 
-const MESSAGES = {
-  today: 'Сегодня',
-  next: 'Вперёд',
-  previous: 'Назад',
-  month: 'Месяц',
-  week: 'Неделя',
-  day: 'День',
-  agenda: 'Список',
-  date: 'Дата',
-  time: 'Время',
-  event: 'Событие',
-  allDay: 'Весь день',
-  noEventsInRange: 'Нет встреч в этом диапазоне',
-  showMore: (n: number) => `+ ещё ${n}`
-}
-
 type RbcEvent = {
   id: number
   title: string
@@ -75,13 +60,33 @@ type RbcEvent = {
 }
 
 export default function CalendarPage() {
-  useShellTitle('Календарь')
+  const { t } = useTranslation()
+  useShellTitle(t('nav.calendar'))
   const [searchParams] = useSearchParams()
   const dateParam = searchParams.get('date')
 
   const [date, setDate] = useState<Date>(() => (dateParam ? new Date(dateParam) : new Date()))
   const [view, setView] = useState<View>(Views.MONTH)
   const [dialog, setDialog] = useState<MeetingDialogState | null>(null)
+
+  const messages = useMemo(
+    () => ({
+      today: t('calendar.today'),
+      next: t('calendar.next'),
+      previous: t('calendar.previous'),
+      month: t('calendar.month'),
+      week: t('calendar.week'),
+      day: t('calendar.day'),
+      agenda: t('calendar.agenda'),
+      date: t('calendar.date'),
+      time: t('calendar.time'),
+      event: t('calendar.event'),
+      allDay: t('calendar.all_day'),
+      noEventsInRange: t('calendar.no_events_in_range'),
+      showMore: (n: number) => t('calendar.show_more', { count: n })
+    }),
+    [t]
+  )
 
   // Реакция на смену ?date= в URL (приходит из MiniCalendar).
   useEffect(() => {
@@ -115,12 +120,12 @@ export default function CalendarPage() {
     const byId = new Map((clients ?? []).map((c) => [c.id, c]))
     return (meetings ?? []).map((m) => ({
       id: m.id,
-      title: byId.get(m.client_id)?.full_name ?? `Клиент #${m.client_id}`,
+      title: byId.get(m.client_id)?.full_name ?? t('calendar.client_fallback', { id: m.client_id }),
       start: new Date(m.starts_at),
       end: new Date(m.ends_at),
       resource: m
     }))
-  }, [meetings, clients])
+  }, [meetings, clients, t])
 
   function onSelectSlot(slot: SlotInfo) {
     setDialog({ mode: 'create', preset: { start: slot.start as Date } })
@@ -148,7 +153,7 @@ export default function CalendarPage() {
         <Calendar
           localizer={localizer}
           culture="ru"
-          messages={MESSAGES}
+          messages={messages}
           events={events}
           startAccessor="start"
           endAccessor="end"

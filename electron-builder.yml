@@ -13,6 +13,8 @@ files:
   - out/**
   - package.json
   - resources/**
+  # Текст лицензии едет в пакет (для UI он дополнительно инлайнен через ?raw).
+  - LICENSE
 asarUnpack:
   - "**/*.node"
 mac:

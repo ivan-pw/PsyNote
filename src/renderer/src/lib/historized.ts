@@ -2,7 +2,7 @@
  * src/renderer/src/lib/historized.ts
  *
  * Метаинформация об историзируемых полях клиента — для UI:
- *  - label  — подпись в карточке клиента;
+ *  - label  — i18n-ключ подписи в карточке клиента (рендерить через t(meta.label));
  *  - icon   — иконка lucide-react (используется в PermanentFields);
  *  - parseExternal — превращение значения поля в URL для shell.openExternal:
  *    мессенджер и видео-ссылка — кликабельны (см. plan.md §6.3),
@@ -17,6 +17,7 @@ import {
   type HistorizedField
 } from '@shared/historized'
 import {
+  BriefcaseMedical,
   Mail,
   MessageCircle,
   Phone,
@@ -27,35 +28,43 @@ import {
 } from 'lucide-react'
 
 export type HistorizedFieldMeta = {
+  /** i18n-ключ подписи поля (рендерить через t(meta.label)). */
   label: string
   icon: LucideIcon
+  /** i18n-ключ плейсхолдера (рендерить через t(meta.placeholder)). */
   placeholder: string
   multiline?: boolean
 }
 
 export const HISTORIZED_FIELD_META: Record<HistorizedField, HistorizedFieldMeta> = {
-  phone: { label: 'Телефон', icon: Phone, placeholder: '+7 999 123-45-67' },
-  email: { label: 'Email', icon: Mail, placeholder: 'name@example.com' },
+  phone: { label: 'fields.phone', icon: Phone, placeholder: 'fields.placeholder.phone' },
+  email: { label: 'fields.email', icon: Mail, placeholder: 'fields.placeholder.email' },
   messenger: {
-    label: 'Мессенджер',
+    label: 'fields.messenger',
     icon: MessageCircle,
-    placeholder: 'telegram:@username, https://…'
+    placeholder: 'fields.placeholder.messenger'
   },
   video_link: {
-    label: 'Видео-ссылка',
+    label: 'fields.video_link',
     icon: Video,
-    placeholder: 'https://meet.jit.si/…'
+    placeholder: 'fields.placeholder.video_link'
   },
   diagnosis: {
-    label: 'Диагноз',
+    label: 'fields.diagnosis',
     icon: Stethoscope,
-    placeholder: 'Текущий диагноз',
+    placeholder: 'fields.placeholder.diagnosis',
     multiline: true
   },
   medications: {
-    label: 'Медикаменты',
+    label: 'fields.medications',
     icon: Pill,
-    placeholder: 'Перечислите препараты',
+    placeholder: 'fields.placeholder.medications',
+    multiline: true
+  },
+  doctor: {
+    label: 'fields.doctor',
+    icon: BriefcaseMedical,
+    placeholder: 'fields.placeholder.doctor',
     multiline: true
   }
 }

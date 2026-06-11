@@ -12,6 +12,7 @@
  * В этапе 6 здесь же будет переключатель темы/языка и брендирование.
  */
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Lock, ShieldCheck } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -21,6 +22,7 @@ import { checkPasswordStrength, PASSWORD_MIN_LENGTH } from '@/lib/passwordStreng
 import { useAuthStore } from '@/store/authStore'
 
 export default function UnlockPage() {
+  const { t } = useTranslation()
   const initialized = useAuthStore((s) => s.initialized)
   const setupPassword = useAuthStore((s) => s.setupPassword)
   const unlock = useAuthStore((s) => s.unlock)
@@ -38,19 +40,16 @@ export default function UnlockPage() {
 
     if (isSetup) {
       if (password.length < PASSWORD_MIN_LENGTH) {
-        setError(`Пароль должен быть не короче ${PASSWORD_MIN_LENGTH} символов`)
+        setError(t('unlock.error_min_length', { min: PASSWORD_MIN_LENGTH }))
         return
       }
       if (password !== confirm) {
-        setError('Пароли не совпадают')
+        setError(t('unlock.error_mismatch'))
         return
       }
       const strength = checkPasswordStrength(password)
       if (!strength.ok) {
-        setError(
-          strength.hints[0] ??
-            'Пароль слишком предсказуем — добавьте уникальных слов или символов'
-        )
+        setError(strength.hints[0] ?? t('unlock.error_predictable'))
         return
       }
       setBusy(true)
@@ -63,13 +62,13 @@ export default function UnlockPage() {
       }
     } else {
       if (!password) {
-        setError('Введите пароль')
+        setError(t('unlock.error_empty'))
         return
       }
       setBusy(true)
       try {
         const ok = await unlock(password)
-        if (!ok) setError('Неверный пароль')
+        if (!ok) setError(t('unlock.error_wrong'))
       } catch (err) {
         setError(err instanceof Error ? err.message : String(err))
       } finally {
@@ -89,18 +88,16 @@ export default function UnlockPage() {
             {isSetup ? <ShieldCheck className="size-6" /> : <Lock className="size-6" />}
           </div>
           <h1 className="text-xl font-semibold tracking-tight">
-            {isSetup ? 'Создайте пароль' : 'Введите пароль'}
+            {isSetup ? t('unlock.create_title') : t('unlock.enter_title')}
           </h1>
           <p className="text-center text-sm text-muted-foreground">
-            {isSetup
-              ? 'Этот пароль шифрует базу данных. Восстановить его нельзя.'
-              : 'Без пароля база данных не открывается.'}
+            {isSetup ? t('unlock.setup_hint') : t('unlock.unlock_hint')}
           </p>
         </div>
 
         <div className="space-y-3">
           <div className="space-y-1">
-            <Label htmlFor="password">Пароль</Label>
+            <Label htmlFor="password">{t('unlock.password')}</Label>
             <Input
               id="password"
               type="password"
@@ -115,7 +112,7 @@ export default function UnlockPage() {
             <>
               <PasswordStrengthMeter password={password} />
               <div className="space-y-1">
-                <Label htmlFor="confirm">Повторите пароль</Label>
+                <Label htmlFor="confirm">{t('unlock.confirm_password')}</Label>
                 <Input
                   id="confirm"
                   type="password"
@@ -132,7 +129,7 @@ export default function UnlockPage() {
         {error && <p className="text-sm text-destructive">{error}</p>}
 
         <Button type="submit" className="w-full" disabled={busy}>
-          {busy ? '...' : isSetup ? 'Создать' : 'Войти'}
+          {busy ? '...' : isSetup ? t('common.create') : t('unlock.login')}
         </Button>
       </form>
     </div>

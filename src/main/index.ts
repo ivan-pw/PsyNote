@@ -15,7 +15,29 @@ import { app, BrowserWindow, shell } from 'electron'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 import { registerAllIpc } from './ipc'
-import { closeDatabase } from './db/connection'
+import { closeDatabase, getDb, isUnlocked } from './db/connection'
+import { getSetting } from './db/repositories/settingsRepo'
+import { createBackup } from './services/backup'
+
+/**
+ * Бэкап при выходе (настройка `backup_enabled`, по умолчанию true).
+ * Выполняется один раз перед закрытием БД; ошибки не блокируют выход —
+ * лучше выйти без бэкапа, чем зависнуть с открытой БД.
+ */
+function backupOnExit(): void {
+  // После closeDatabase() isUnlocked() = false, поэтому повторный вызов
+  // (window-all-closed → will-quit) сам по себе no-op. На macOS после
+  // повторного открытия окна и unlock бэкап при следующем выходе снова сработает.
+  if (!isUnlocked()) return
+  try {
+    const db = getDb()
+    if (getSetting<boolean>(db, 'backup_enabled') !== true) return
+    const keep = (getSetting<number>(db, 'backup_keep_count') ?? 10) | 0
+    createBackup(keep)
+  } catch (err) {
+    console.warn('Бэкап при выходе не удался:', err)
+  }
+}
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
@@ -67,10 +89,12 @@ app.whenReady().then(() => {
 })
 
 app.on('window-all-closed', () => {
+  backupOnExit()
   closeDatabase()
   if (process.platform !== 'darwin') app.quit()
 })
 
 app.on('will-quit', () => {
+  backupOnExit()
   closeDatabase()
 })

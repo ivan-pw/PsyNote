@@ -9,19 +9,30 @@
  * записи из search_index (через триггеры).
  */
 import { useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { RotateCcw, Trash2 } from 'lucide-react'
 import { toast } from '@/components/ui/sonner'
 import { Button } from '@/components/ui/button'
+import { ConfirmDestructiveDialog } from '@/components/ConfirmDestructiveDialog'
 import { useClients } from '@/hooks/useClients'
 import { clientsApi } from '@/api/clients'
 import { useQueryClient } from '@tanstack/react-query'
 import { clientsKeys } from '@/hooks/useClients'
 import { formatDate } from '@/lib/format'
 
+// Что подтверждаем: одного клиента или всю корзину.
+type ConfirmState =
+  | { kind: 'purge'; id: number; name: string }
+  | { kind: 'empty' }
+  | null
+
 export function TrashSettings() {
+  const { t } = useTranslation()
   const qc = useQueryClient()
   const { data: clients, isLoading } = useClients({ includeArchived: true })
   const [busyId, setBusyId] = useState<number | null>(null)
+  const [confirm, setConfirm] = useState<ConfirmState>(null)
+  const [confirmBusy, setConfirmBusy] = useState(false)
 
   const archived = useMemo(
     () => (clients ?? []).filter((c) => c.archived_at),
@@ -37,7 +48,7 @@ export function TrashSettings() {
     try {
       await clientsApi.restore(id)
       invalidate()
-      toast.success(`«${name}» восстановлен`)
+      toast.success(t('trash.restored', { name }))
     } catch (err) {
       toast.error(err instanceof Error ? err.message : String(err))
     } finally {
@@ -45,59 +56,45 @@ export function TrashSettings() {
     }
   }
 
-  async function handlePurge(id: number, name: string) {
-    if (!window.confirm(`Удалить «${name}» навсегда? Восстановить будет нельзя.`)) {
-      return
-    }
-    setBusyId(id)
+  async function doConfirm() {
+    if (!confirm) return
+    setConfirmBusy(true)
     try {
-      await clientsApi.purge(id)
+      if (confirm.kind === 'purge') {
+        setBusyId(confirm.id)
+        await clientsApi.purge(confirm.id)
+        toast.success(t('trash.purged', { name: confirm.name }))
+      } else {
+        await clientsApi.emptyTrash()
+        toast.success(t('trash.emptied'))
+      }
       invalidate()
-      toast.success(`«${name}» удалён навсегда`)
+      setConfirm(null)
     } catch (err) {
       toast.error(err instanceof Error ? err.message : String(err))
     } finally {
+      setConfirmBusy(false)
       setBusyId(null)
-    }
-  }
-
-  async function handleEmpty() {
-    if (
-      !window.confirm(
-        `Удалить навсегда всех ${archived.length} архивных клиентов? Восстановить будет нельзя.`
-      )
-    ) {
-      return
-    }
-    try {
-      await clientsApi.emptyTrash()
-      invalidate()
-      toast.success('Корзина очищена')
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : String(err))
     }
   }
 
   return (
     <section className="space-y-3">
       <div className="flex items-end justify-between gap-3">
-        <p className="text-xs text-muted-foreground">
-          Архивных клиентов можно восстановить или удалить навсегда. Полное
-          удаление каскадно убирает все встречи, заметки и анамнезы клиента.
-        </p>
+        <p className="text-xs text-muted-foreground">{t('trash.description')}</p>
         {archived.length > 0 && (
-          <Button variant="outline" size="sm" onClick={handleEmpty}>
+          <Button variant="outline" size="sm" onClick={() => setConfirm({ kind: 'empty' })}>
             <Trash2 className="size-4" />
-            Очистить корзину
+            {t('trash.empty_button')}
           </Button>
         )}
       </div>
 
       {isLoading ? (
-        <p className="text-sm text-muted-foreground">Загрузка…</p>
+        <p className="text-sm text-muted-foreground">{t('app.loading')}</p>
       ) : archived.length === 0 ? (
         <p className="rounded-md border border-dashed p-3 text-sm text-muted-foreground">
-          Корзина пуста.
+          {t('trash.empty')}
         </p>
       ) : (
         <ul className="divide-y rounded-md border">
@@ -109,7 +106,7 @@ export function TrashSettings() {
               <div className="min-w-0 flex-1">
                 <div className="font-medium">{c.full_name}</div>
                 <div className="text-xs text-muted-foreground">
-                  Архивирован{' '}
+                  {t('trash.archived')}{' '}
                   {c.archived_at ? formatDate(c.archived_at) : '—'}
                 </div>
               </div>
@@ -120,22 +117,34 @@ export function TrashSettings() {
                 disabled={busyId === c.id}
               >
                 <RotateCcw className="size-4" />
-                Восстановить
+                {t('common.restore')}
               </Button>
               <Button
                 variant="ghost"
                 size="sm"
                 className="text-destructive hover:text-destructive"
-                onClick={() => void handlePurge(c.id, c.full_name)}
+                onClick={() => setConfirm({ kind: 'purge', id: c.id, name: c.full_name })}
                 disabled={busyId === c.id}
               >
                 <Trash2 className="size-4" />
-                Удалить
+                {t('common.delete')}
               </Button>
             </li>
           ))}
         </ul>
       )}
+
+      <ConfirmDestructiveDialog
+        open={confirm !== null}
+        itemLabel={
+          confirm?.kind === 'purge'
+            ? t('trash.purge_confirm', { name: confirm.name })
+            : t('trash.empty_confirm', { count: archived.length })
+        }
+        busy={confirmBusy}
+        onCancel={() => setConfirm(null)}
+        onConfirm={doConfirm}
+      />
     </section>
   )
 }

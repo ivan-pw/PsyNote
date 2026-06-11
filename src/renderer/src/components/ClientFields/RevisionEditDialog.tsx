@@ -12,6 +12,7 @@
  * по полю, current_* откатится на предыдущее (см. deleteFieldRevision).
  */
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Trash2 } from 'lucide-react'
 import {
   Dialog,
@@ -55,6 +56,7 @@ export function RevisionEditDialog({
   note,
   onClose
 }: Props) {
+  const { t } = useTranslation()
   const qc = useQueryClient()
   const [confirm, setConfirm] = useState(false)
 
@@ -68,7 +70,7 @@ export function RevisionEditDialog({
           queryKey: clientsKeys.revisions(clientId, fieldKey)
         })
       }
-      toast.success('Ревизия удалена')
+      toast.success(t('revision.deleted'))
       setConfirm(false)
       onClose()
     },
@@ -77,8 +79,8 @@ export function RevisionEditDialog({
 
   const fieldLabel =
     fieldKey && isHistorizedField(fieldKey)
-      ? HISTORIZED_FIELD_META[fieldKey].label
-      : fieldKey ?? 'Поле'
+      ? t(HISTORIZED_FIELD_META[fieldKey].label)
+      : fieldKey ?? t('revision.field_fallback')
 
   // Для medications значение — JSON-массив; показываем читабельно.
   const isMeds = fieldKey === 'medications'
@@ -90,7 +92,7 @@ export function RevisionEditDialog({
       <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Изменение поля «{fieldLabel}»</DialogTitle>
+            <DialogTitle>{t('revision.title', { field: fieldLabel })}</DialogTitle>
             <DialogDescription>
               {formatDateTime(changedAt)}
             </DialogDescription>
@@ -99,18 +101,18 @@ export function RevisionEditDialog({
           <div className="space-y-3 text-sm">
             <div>
               <div className="text-xs uppercase tracking-wide text-muted-foreground">
-                Новое значение
+                {t('revision.new_value')}
               </div>
               <div className="mt-0.5 whitespace-pre-wrap break-words">
                 {displayValue ?? (
-                  <span className="italic text-muted-foreground">очищено</span>
+                  <span className="italic text-muted-foreground">{t('fields.cleared')}</span>
                 )}
               </div>
             </div>
             {displayPrev && (
               <div>
                 <div className="text-xs uppercase tracking-wide text-muted-foreground">
-                  Было до этого
+                  {t('revision.prev_value')}
                 </div>
                 <div className="mt-0.5 whitespace-pre-wrap break-words text-muted-foreground">
                   {displayPrev}
@@ -120,15 +122,13 @@ export function RevisionEditDialog({
             {note && (
               <div>
                 <div className="text-xs uppercase tracking-wide text-muted-foreground">
-                  Комментарий
+                  {t('revision.comment')}
                 </div>
                 <div className="mt-0.5 italic">{note}</div>
               </div>
             )}
             <p className="rounded border bg-muted/40 p-2 text-xs text-muted-foreground">
-              Чтобы изменить текущее значение поля, отредактируйте его в правой
-              панели — это создаст новую ревизию. Историческую запись можно
-              только удалить.
+              {t('revision.hint')}
             </p>
           </div>
 
@@ -141,10 +141,10 @@ export function RevisionEditDialog({
               disabled={remove.isPending}
             >
               <Trash2 className="size-4" />
-              Удалить
+              {t('common.delete')}
             </Button>
             <Button type="button" variant="outline" onClick={onClose}>
-              Закрыть
+              {t('common.close')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -152,7 +152,7 @@ export function RevisionEditDialog({
 
       <ConfirmDestructiveDialog
         open={confirm}
-        itemLabel="Эта запись истории будет удалена. Если она последняя по полю, текущее значение откатится на предыдущее."
+        itemLabel={t('revision.delete_confirm')}
         busy={remove.isPending}
         onCancel={() => setConfirm(false)}
         onConfirm={() => remove.mutate()}

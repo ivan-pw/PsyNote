@@ -7,6 +7,7 @@
  * Удаление — через ConfirmDestructiveDialog (требует ввод слова «удалить»).
  */
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Trash2 } from 'lucide-react'
 import {
   Dialog,
@@ -48,6 +49,7 @@ const emptyForm: FormState = {
 }
 
 export function MeetingProtocolDialog({ open, meetingId, clientId, onClose }: Props) {
+  const { t } = useTranslation()
   const { data: existing, isLoading } = useProtocolByMeeting(open ? meetingId : null)
   const upsert = useUpsertProtocol(meetingId, clientId)
   const remove = useDeleteProtocol(meetingId, clientId)
@@ -89,12 +91,12 @@ export function MeetingProtocolDialog({ open, meetingId, clientId, onClose }: Pr
     const input = buildInput()
     const allEmpty = Object.values(input).every((v) => !v)
     if (allEmpty) {
-      setError('Заполните хотя бы одно поле')
+      setError(t('protocol.error_empty'))
       return
     }
     try {
       await upsert.mutateAsync(input)
-      toast.success(existing ? 'Протокол обновлён' : 'Протокол сохранён')
+      toast.success(existing ? t('protocol.updated') : t('protocol.saved'))
       onClose()
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
@@ -105,7 +107,7 @@ export function MeetingProtocolDialog({ open, meetingId, clientId, onClose }: Pr
     if (!existing) return
     try {
       await remove.mutateAsync(existing.id)
-      toast.success('Протокол удалён')
+      toast.success(t('protocol.deleted'))
       setConfirmDelete(false)
       onClose()
     } catch (err) {
@@ -121,26 +123,23 @@ export function MeetingProtocolDialog({ open, meetingId, clientId, onClose }: Pr
         <DialogContent className="max-w-3xl">
           <DialogHeader>
             <DialogTitle>
-              {existing ? 'Протокол встречи' : 'Новый протокол встречи'}
+              {existing ? t('protocol.title') : t('protocol.new')}
             </DialogTitle>
-            <DialogDescription>
-              Все поля необязательны. На одну встречу — один протокол; повторное
-              сохранение обновит существующий.
-            </DialogDescription>
+            <DialogDescription>{t('protocol.description')}</DialogDescription>
           </DialogHeader>
 
           {isLoading && open ? (
-            <p className="py-6 text-sm text-muted-foreground">Загрузка…</p>
+            <p className="py-6 text-sm text-muted-foreground">{t('app.loading')}</p>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-1 gap-4">
                 {PROTOCOL_FIELDS.map(({ key, label, placeholder }) => (
                   <div key={key} className="space-y-1">
-                    <Label htmlFor={`protocol-${key}`}>{label}</Label>
+                    <Label htmlFor={`protocol-${key}`}>{t(label)}</Label>
                     <Textarea
                       id={`protocol-${key}`}
                       rows={3}
-                      placeholder={placeholder}
+                      placeholder={t(placeholder)}
                       value={form[key]}
                       onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))}
                     />
@@ -160,7 +159,7 @@ export function MeetingProtocolDialog({ open, meetingId, clientId, onClose }: Pr
                     disabled={busy}
                   >
                     <Trash2 className="size-4" />
-                    Удалить
+                    {t('common.delete')}
                   </Button>
                 )}
                 <Button
@@ -169,10 +168,10 @@ export function MeetingProtocolDialog({ open, meetingId, clientId, onClose }: Pr
                   onClick={onClose}
                   disabled={busy}
                 >
-                  Отмена
+                  {t('common.cancel')}
                 </Button>
                 <Button type="submit" disabled={busy}>
-                  {busy ? '…' : existing ? 'Сохранить' : 'Создать'}
+                  {busy ? '…' : existing ? t('common.save') : t('common.create')}
                 </Button>
               </DialogFooter>
             </form>
@@ -182,7 +181,7 @@ export function MeetingProtocolDialog({ open, meetingId, clientId, onClose }: Pr
 
       <ConfirmDestructiveDialog
         open={confirmDelete}
-        itemLabel="Протокол этой встречи будет удалён навсегда."
+        itemLabel={t('protocol.delete_confirm')}
         busy={remove.isPending}
         onCancel={() => setConfirmDelete(false)}
         onConfirm={doDelete}

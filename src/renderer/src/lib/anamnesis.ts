@@ -1,8 +1,8 @@
 /**
  * src/renderer/src/lib/anamnesis.ts
  *
- * Метаданные структурного анамнеза для UI: подписи и порядок отображения
- * подполей в форме и в раскрытой карточке.
+ * Метаданные структурного анамнеза для UI: i18n-ключи подписей и порядок
+ * отображения подполей в форме (рендерить через t(label)).
  *
  * Превью для таймлайна (anamnesisPreview) — короткая строка из первого
  * непустого подполя в порядке complaints → notes → life_history.
@@ -22,13 +22,13 @@ export type AnamnesisFieldKey =
   | 'notes'
 
 export const ANAMNESIS_FIELDS: Array<{ key: AnamnesisFieldKey; label: string }> = [
-  { key: 'complaints', label: 'Жалобы' },
-  { key: 'life_history', label: 'Анамнез жизни' },
-  { key: 'family_history', label: 'Семейный анамнез' },
-  { key: 'medical_history', label: 'Соматический анамнез' },
-  { key: 'mental_history', label: 'Психический анамнез' },
-  { key: 'substances', label: 'ПАВ' },
-  { key: 'notes', label: 'Заметки' }
+  { key: 'complaints', label: 'anamnesis.fields.complaints' },
+  { key: 'life_history', label: 'anamnesis.fields.life_history' },
+  { key: 'family_history', label: 'anamnesis.fields.family_history' },
+  { key: 'medical_history', label: 'anamnesis.fields.medical_history' },
+  { key: 'mental_history', label: 'anamnesis.fields.mental_history' },
+  { key: 'substances', label: 'anamnesis.fields.substances' },
+  { key: 'notes', label: 'anamnesis.fields.notes' }
 ]
 
 export function anamnesisPreview(a: Pick<Anamnesis, 'complaints' | 'notes' | 'life_history'>): string | null {

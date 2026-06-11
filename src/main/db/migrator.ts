@@ -24,6 +24,8 @@ import homeworkColor004 from './migrations/004_homework_color.sql?raw'
 import noteEvents005 from './migrations/005_note_events.sql?raw'
 import medicationPresets006 from './migrations/006_medication_presets.sql?raw'
 import medicationPresetsSeed007 from './migrations/007_medication_presets_seed.sql?raw'
+import ageDoctor008 from './migrations/008_age_doctor.sql?raw'
+import noteEventPurgeFix009 from './migrations/009_note_event_purge_fix.sql?raw'
 
 type Migration = {
   version: number
@@ -38,7 +40,9 @@ const MIGRATIONS: Migration[] = [
   { version: 4, name: '004_homework_color', sql: homeworkColor004 },
   { version: 5, name: '005_note_events', sql: noteEvents005 },
   { version: 6, name: '006_medication_presets', sql: medicationPresets006 },
-  { version: 7, name: '007_medication_presets_seed', sql: medicationPresetsSeed007 }
+  { version: 7, name: '007_medication_presets_seed', sql: medicationPresetsSeed007 },
+  { version: 8, name: '008_age_doctor', sql: ageDoctor008 },
+  { version: 9, name: '009_note_event_purge_fix', sql: noteEventPurgeFix009 }
 ]
 
 export function runMigrations(db: DbHandle): void {

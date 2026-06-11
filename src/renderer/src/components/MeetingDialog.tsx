@@ -12,6 +12,7 @@
  */
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { ExternalLink, FileEdit, Trash2 } from 'lucide-react'
 import {
   Dialog,
@@ -40,7 +41,6 @@ import {
 import { useClients } from '@/hooks/useClients'
 import {
   DEFAULT_SESSION_MINUTES,
-  MEETING_STATUS_LABEL,
   addMinutes,
   inputToIso,
   isoToLocalInput,
@@ -98,6 +98,7 @@ function meetingToForm(m: Meeting): FormState {
 }
 
 export function MeetingDialog({ open, state, onClose, showOpenClient = true }: Props) {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const { data: clients } = useClients({ includeArchived: false })
   const create = useCreateMeeting()
@@ -129,15 +130,15 @@ export function MeetingDialog({ open, state, onClose, showOpenClient = true }: P
     if (!state) return
     setError(null)
     if (!form.client_id) {
-      setError('Выберите клиента')
+      setError(t('meeting.select_client'))
       return
     }
     if (!form.starts_at || !form.ends_at) {
-      setError('Укажите время начала и окончания')
+      setError(t('meeting.error_no_time'))
       return
     }
     if (new Date(form.ends_at) <= new Date(form.starts_at)) {
-      setError('Окончание должно быть позже начала')
+      setError(t('meeting.error_order'))
       return
     }
     try {
@@ -196,23 +197,22 @@ export function MeetingDialog({ open, state, onClose, showOpenClient = true }: P
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{isEdit ? 'Встреча' : 'Новая встреча'}</DialogTitle>
+          <DialogTitle>{isEdit ? t('meeting.title') : t('meeting.new')}</DialogTitle>
           <DialogDescription>
-            Время хранится в локальной таймзоне. Длительность по умолчанию —{' '}
-            {DEFAULT_SESSION_MINUTES} минут.
+            {t('meeting.description', { minutes: DEFAULT_SESSION_MINUTES })}
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1">
-            <Label htmlFor="client">Клиент</Label>
+            <Label htmlFor="client">{t('meeting.client')}</Label>
             <Select
               value={form.client_id ? String(form.client_id) : undefined}
               onValueChange={(v) => setForm((f) => ({ ...f, client_id: Number(v) }))}
               disabled={isEdit /* в edit клиента не меняем */}
             >
               <SelectTrigger id="client">
-                <SelectValue placeholder="Выберите клиента" />
+                <SelectValue placeholder={t('meeting.select_client')} />
               </SelectTrigger>
               <SelectContent>
                 {(clients ?? []).map((c) => (
@@ -226,7 +226,7 @@ export function MeetingDialog({ open, state, onClose, showOpenClient = true }: P
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
-              <Label htmlFor="starts_at">Начало</Label>
+              <Label htmlFor="starts_at">{t('meeting.starts')}</Label>
               <Input
                 id="starts_at"
                 type="datetime-local"
@@ -260,7 +260,7 @@ export function MeetingDialog({ open, state, onClose, showOpenClient = true }: P
               />
             </div>
             <div className="space-y-1">
-              <Label htmlFor="ends_at">Окончание</Label>
+              <Label htmlFor="ends_at">{t('meeting.ends')}</Label>
               <Input
                 id="ends_at"
                 type="datetime-local"
@@ -271,7 +271,7 @@ export function MeetingDialog({ open, state, onClose, showOpenClient = true }: P
           </div>
 
           <div className="space-y-1">
-            <Label htmlFor="status">Статус</Label>
+            <Label htmlFor="status">{t('meeting.status_label')}</Label>
             <Select
               value={form.status}
               onValueChange={(v) => setForm((f) => ({ ...f, status: v as MeetingStatus }))}
@@ -282,7 +282,7 @@ export function MeetingDialog({ open, state, onClose, showOpenClient = true }: P
               <SelectContent>
                 {MEETING_STATUSES.map((s) => (
                   <SelectItem key={s} value={s}>
-                    {MEETING_STATUS_LABEL[s]}
+                    {t(`meeting.status.${s}`)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -290,7 +290,7 @@ export function MeetingDialog({ open, state, onClose, showOpenClient = true }: P
           </div>
 
           <div className="space-y-1">
-            <Label htmlFor="comment">Комментарий</Label>
+            <Label htmlFor="comment">{t('meeting.comment')}</Label>
             <Textarea
               id="comment"
               rows={3}
@@ -317,7 +317,7 @@ export function MeetingDialog({ open, state, onClose, showOpenClient = true }: P
                   disabled={busy}
                 >
                   <Trash2 className="size-4" />
-                  Удалить
+                  {t('common.delete')}
                 </Button>
                 <Button
                   type="button"
@@ -326,7 +326,7 @@ export function MeetingDialog({ open, state, onClose, showOpenClient = true }: P
                   disabled={busy}
                 >
                   <FileEdit className="size-4" />
-                  Протокол
+                  {t('meeting.protocol')}
                 </Button>
                 {showOpenClient && (
                   <Button
@@ -339,13 +339,13 @@ export function MeetingDialog({ open, state, onClose, showOpenClient = true }: P
                     disabled={busy}
                   >
                     <ExternalLink className="size-4" />
-                    Открыть клиента
+                    {t('meeting.open_client')}
                   </Button>
                 )}
               </>
             )}
             <Button type="button" variant="outline" onClick={onClose} disabled={busy}>
-              Отмена
+              {t('common.cancel')}
             </Button>
             {!isEdit && (
               <Button
@@ -355,11 +355,11 @@ export function MeetingDialog({ open, state, onClose, showOpenClient = true }: P
                 disabled={busy}
               >
                 <FileEdit className="size-4" />
-                Создать + протокол
+                {t('meeting.create_with_protocol')}
               </Button>
             )}
             <Button type="submit" disabled={busy}>
-              {busy ? '…' : isEdit ? 'Сохранить' : 'Создать'}
+              {busy ? '…' : isEdit ? t('common.save') : t('common.create')}
             </Button>
           </DialogFooter>
         </form>
@@ -368,7 +368,7 @@ export function MeetingDialog({ open, state, onClose, showOpenClient = true }: P
 
     <ConfirmDestructiveDialog
       open={confirmDelete}
-      itemLabel="Эта встреча будет удалена. Её протокол (если есть) — тоже."
+      itemLabel={t('meeting.delete_confirm')}
       busy={remove.isPending}
       onCancel={() => setConfirmDelete(false)}
       onConfirm={doDelete}

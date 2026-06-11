@@ -16,6 +16,7 @@
  * смены пароля main сбрасывает их в false.
  */
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { ShieldAlert } from 'lucide-react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
@@ -40,6 +41,7 @@ import {
 const SECURITY_FLAGS_KEY = ['auth', 'security-flags'] as const
 
 export function WeakPasswordGate({ children }: { children: React.ReactNode }) {
+  const { t } = useTranslation()
   const unlocked = useAuthStore((s) => s.unlocked)
   const qc = useQueryClient()
 
@@ -88,19 +90,16 @@ export function WeakPasswordGate({ children }: { children: React.ReactNode }) {
     e.preventDefault()
     setError(null)
     if (newP !== newP2) {
-      setError('Новые пароли не совпадают')
+      setError(t('security.passwords_mismatch'))
       return
     }
     if (newP.length < PASSWORD_MIN_LENGTH) {
-      setError(`Новый пароль должен быть не короче ${PASSWORD_MIN_LENGTH} символов`)
+      setError(t('security.new_password_min', { min: PASSWORD_MIN_LENGTH }))
       return
     }
     const strength = checkPasswordStrength(newP)
     if (!strength.ok) {
-      setError(
-        strength.hints[0] ??
-          'Пароль слишком предсказуем — добавьте уникальных слов или символов'
-      )
+      setError(strength.hints[0] ?? t('unlock.error_predictable'))
       return
     }
     setBusy(true)
@@ -118,14 +117,10 @@ export function WeakPasswordGate({ children }: { children: React.ReactNode }) {
 
   const reasonLines: string[] = []
   if (flags?.weakPasswordDetected) {
-    reasonLines.push(
-      `Текущий пароль не соответствует новым требованиям (минимум ${PASSWORD_MIN_LENGTH} символов).`
-    )
+    reasonLines.push(t('security.weak_password_reason', { min: PASSWORD_MIN_LENGTH }))
   }
   if (flags?.kdfNeedsUpgrade) {
-    reasonLines.push(
-      'Защита пароля будет обновлена на более стойкий алгоритм (Argon2id) при смене пароля.'
-    )
+    reasonLines.push(t('security.kdf_upgrade_reason'))
   }
 
   return (
@@ -145,7 +140,7 @@ export function WeakPasswordGate({ children }: { children: React.ReactNode }) {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <ShieldAlert className="size-5 text-primary" />
-              Требуется смена пароля
+              {t('security.change_required_title')}
             </DialogTitle>
             <DialogDescription>
               {reasonLines.map((l, i) => (
@@ -158,7 +153,7 @@ export function WeakPasswordGate({ children }: { children: React.ReactNode }) {
 
           <form onSubmit={submit} className="space-y-3">
             <div className="space-y-1">
-              <Label htmlFor="gate-old">Текущий пароль</Label>
+              <Label htmlFor="gate-old">{t('security.current_password')}</Label>
               <Input
                 id="gate-old"
                 type="password"
@@ -170,7 +165,7 @@ export function WeakPasswordGate({ children }: { children: React.ReactNode }) {
               />
             </div>
             <div className="space-y-1">
-              <Label htmlFor="gate-new">Новый пароль</Label>
+              <Label htmlFor="gate-new">{t('security.new_password')}</Label>
               <Input
                 id="gate-new"
                 type="password"
@@ -182,7 +177,7 @@ export function WeakPasswordGate({ children }: { children: React.ReactNode }) {
               <PasswordStrengthMeter password={newP} className="mt-1.5" />
             </div>
             <div className="space-y-1">
-              <Label htmlFor="gate-new2">Повторите новый пароль</Label>
+              <Label htmlFor="gate-new2">{t('security.repeat_new_password')}</Label>
               <Input
                 id="gate-new2"
                 type="password"
@@ -202,10 +197,10 @@ export function WeakPasswordGate({ children }: { children: React.ReactNode }) {
                 onClick={() => void window.api.app.quit()}
                 disabled={busy}
               >
-                Выйти
+                {t('security.quit')}
               </Button>
               <Button type="submit" disabled={busy}>
-                {busy ? '…' : 'Сменить пароль'}
+                {busy ? '…' : t('security.change_password')}
               </Button>
             </DialogFooter>
           </form>

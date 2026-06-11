@@ -5,6 +5,7 @@
  * Запрос отправляется только когда поповер открыт (useRevisionsByField.enabled).
  */
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { History } from 'lucide-react'
 import {
   Popover,
@@ -32,6 +33,7 @@ type Props = {
 }
 
 export function RevisionHistoryPopover({ clientId, field }: Props) {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const { data, isLoading } = useRevisionsByField(clientId, field, open)
   const meta = HISTORIZED_FIELD_META[field]
@@ -44,25 +46,25 @@ export function RevisionHistoryPopover({ clientId, field }: Props) {
             <Button
               variant="ghost"
               size="icon"
-              aria-label="История изменений"
+              aria-label={t('client.history_section')}
               className="size-7 text-muted-foreground"
             >
               <History className="size-3.5" />
             </Button>
           </PopoverTrigger>
         </TooltipTrigger>
-        <TooltipContent>История</TooltipContent>
+        <TooltipContent>{t('common.history')}</TooltipContent>
       </Tooltip>
       <PopoverContent align="end" className="w-80 p-0">
         <div className="border-b px-4 py-2 text-sm font-medium">
-          {meta.label}: история
+          {t('fields.history_title', { field: t(meta.label) })}
         </div>
         <ScrollArea className="max-h-72">
           {isLoading ? (
-            <p className="p-4 text-sm text-muted-foreground">Загрузка…</p>
+            <p className="p-4 text-sm text-muted-foreground">{t('app.loading')}</p>
           ) : !data || data.length === 0 ? (
             <p className="p-4 text-sm text-muted-foreground">
-              История пуста — поле ещё не редактировалось.
+              {t('fields.history_empty')}
             </p>
           ) : (
             <ul className="divide-y">
@@ -79,7 +81,7 @@ export function RevisionHistoryPopover({ clientId, field }: Props) {
                           : rev.value}
                       </span>
                     ) : (
-                      <span className="italic text-muted-foreground">очищено</span>
+                      <span className="italic text-muted-foreground">{t('fields.cleared')}</span>
                     )}
                   </div>
                   {rev.note && (

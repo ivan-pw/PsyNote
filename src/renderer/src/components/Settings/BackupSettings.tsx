@@ -11,7 +11,9 @@
  * предупреждение: файл будет лежать в открытом виде.
  */
 import { useState } from 'react'
-import { Download, FilePlus, RefreshCw, Trash2 } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
+import type { TFunction } from 'i18next'
+import { ArchiveRestore, Download, FilePlus, RefreshCw, Trash2 } from 'lucide-react'
 import { toast } from '@/components/ui/sonner'
 import { Button } from '@/components/ui/button'
 import {
@@ -22,43 +24,65 @@ import {
   DialogHeader,
   DialogTitle
 } from '@/components/ui/dialog'
+import { ConfirmDestructiveDialog } from '@/components/ConfirmDestructiveDialog'
 import {
   useBackups,
   useCreateBackup,
   useDeleteBackup
 } from '@/hooks/useBackups'
+import { useSettingMutation, useSettingQuery } from '@/hooks/useSetting'
 import { backupApi } from '@/api/backup'
 import { formatDateTime } from '@/lib/format'
 
-function fmtSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} Б`
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} КБ`
-  return `${(bytes / 1024 / 1024).toFixed(2)} МБ`
+function fmtSize(bytes: number, t: TFunction): string {
+  if (bytes < 1024) return `${bytes} ${t('backup.unit_b')}`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} ${t('backup.unit_kb')}`
+  return `${(bytes / 1024 / 1024).toFixed(2)} ${t('backup.unit_mb')}`
 }
 
+// Какое опасное действие подтверждаем для выбранного бэкапа.
+type ConfirmState = { kind: 'delete' | 'restore'; path: string } | null
+
 export function BackupSettings() {
+  const { t } = useTranslation()
   const { data: backups, isLoading } = useBackups()
   const create = useCreateBackup()
   const remove = useDeleteBackup()
   const [exporting, setExporting] = useState(false)
   const [warnExportOpen, setWarnExportOpen] = useState(false)
+  const [confirm, setConfirm] = useState<ConfirmState>(null)
+  const [confirmBusy, setConfirmBusy] = useState(false)
+
+  const { data: autoBackup } = useSettingQuery<boolean>('backup_enabled', true)
+  const setAutoBackup = useSettingMutation('backup_enabled')
 
   async function handleCreate() {
     try {
       const b = await create.mutateAsync()
-      toast.success(`Резервная копия создана (${fmtSize(b.size)})`)
+      toast.success(t('backup.created', { size: fmtSize(b.size, t) }))
     } catch (err) {
       toast.error(err instanceof Error ? err.message : String(err))
     }
   }
 
-  async function handleDelete(path: string) {
-    if (!window.confirm('Удалить эту резервную копию?')) return
+  async function doConfirm() {
+    if (!confirm) return
+    setConfirmBusy(true)
     try {
-      await remove.mutateAsync(path)
-      toast.success('Резервная копия удалена')
+      if (confirm.kind === 'delete') {
+        await remove.mutateAsync(confirm.path)
+        toast.success(t('backup.deleted'))
+        setConfirm(null)
+      } else {
+        // restore: main закроет БД, подменит файлы и перезапустит приложение —
+        // ответа можно не дождаться.
+        await backupApi.restore(confirm.path)
+      }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : String(err))
+      setConfirm(null)
+    } finally {
+      setConfirmBusy(false)
     }
   }
 
@@ -67,7 +91,7 @@ export function BackupSettings() {
     setExporting(true)
     try {
       const dst = await backupApi.exportJson()
-      if (dst) toast.success(`Экспорт сохранён: ${dst}`)
+      if (dst) toast.success(t('backup.export_saved', { path: dst }))
     } catch (err) {
       toast.error(err instanceof Error ? err.message : String(err))
     } finally {
@@ -80,12 +104,8 @@ export function BackupSettings() {
       <div className="space-y-3">
         <div className="flex items-end justify-between gap-3">
           <div>
-            <h3 className="text-sm font-semibold">Резервные копии</h3>
-            <p className="text-xs text-muted-foreground">
-              Снимок зашифрованной базы данных. Восстановление возможно только
-              с тем же паролем, что был в момент создания. Старые копии
-              ротируются автоматически.
-            </p>
+            <h3 className="text-sm font-semibold">{t('backup.title')}</h3>
+            <p className="text-xs text-muted-foreground">{t('backup.description')}</p>
           </div>
           <Button
             variant="outline"
@@ -94,15 +114,25 @@ export function BackupSettings() {
             disabled={create.isPending}
           >
             <FilePlus className="size-4" />
-            Создать копию
+            {t('backup.create')}
           </Button>
         </div>
 
+        <label className="flex cursor-pointer items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            className="size-4 accent-primary"
+            checked={autoBackup ?? true}
+            onChange={(e) => setAutoBackup.mutate(e.target.checked)}
+          />
+          {t('backup.auto_on_quit')}
+        </label>
+
         {isLoading ? (
-          <p className="text-sm text-muted-foreground">Загрузка…</p>
+          <p className="text-sm text-muted-foreground">{t('app.loading')}</p>
         ) : !backups || backups.length === 0 ? (
           <p className="rounded-md border border-dashed p-3 text-sm text-muted-foreground">
-            Резервных копий пока нет.
+            {t('backup.empty')}
           </p>
         ) : (
           <ul className="divide-y rounded-md border">
@@ -117,14 +147,23 @@ export function BackupSettings() {
                     {formatDateTime(b.createdAt)}
                   </div>
                   <div className="text-xs text-muted-foreground">
-                    {fmtSize(b.size)} · {b.path}
+                    {fmtSize(b.size, t)} · {b.path}
                   </div>
                 </div>
                 <Button
                   variant="ghost"
                   size="sm"
+                  title={t('backup.restore_hint')}
+                  onClick={() => setConfirm({ kind: 'restore', path: b.path })}
+                >
+                  <ArchiveRestore className="size-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
                   className="text-destructive hover:text-destructive"
-                  onClick={() => void handleDelete(b.path)}
+                  title={t('backup.delete_hint')}
+                  onClick={() => setConfirm({ kind: 'delete', path: b.path })}
                 >
                   <Trash2 className="size-4" />
                 </Button>
@@ -137,11 +176,8 @@ export function BackupSettings() {
       <div className="space-y-3 border-t pt-6">
         <div className="flex items-end justify-between gap-3">
           <div>
-            <h3 className="text-sm font-semibold">Экспорт в JSON</h3>
-            <p className="text-xs text-muted-foreground">
-              Все данные в одном JSON-файле в открытом виде. Удобно для миграции
-              или ручного анализа, но требует осторожности при хранении.
-            </p>
+            <h3 className="text-sm font-semibold">{t('backup.export_title')}</h3>
+            <p className="text-xs text-muted-foreground">{t('backup.export_description')}</p>
           </div>
           <Button
             variant="outline"
@@ -150,7 +186,7 @@ export function BackupSettings() {
             disabled={exporting}
           >
             <Download className="size-4" />
-            Экспортировать
+            {t('backup.export')}
           </Button>
         </div>
       </div>
@@ -158,24 +194,35 @@ export function BackupSettings() {
       <Dialog open={warnExportOpen} onOpenChange={setWarnExportOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Экспортировать данные в JSON?</DialogTitle>
-            <DialogDescription>
-              Файл будет содержать данные клиентов в открытом (нешифрованном)
-              виде. Сохраняйте его только в защищённом месте, при передаче
-              шифруйте отдельно. Удалите после использования.
-            </DialogDescription>
+            <DialogTitle>{t('backup.export_dialog_title')}</DialogTitle>
+            <DialogDescription>{t('backup.export_dialog_description')}</DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setWarnExportOpen(false)}>
-              Отмена
+              {t('common.cancel')}
             </Button>
             <Button onClick={() => void handleExport()}>
               <Download className="size-4" />
-              Понимаю, экспортировать
+              {t('backup.export_confirm')}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDestructiveDialog
+        open={confirm !== null}
+        itemLabel={
+          confirm?.kind === 'restore'
+            ? t('backup.restore_confirm')
+            : t('backup.delete_confirm')
+        }
+        extraWarning={
+          confirm?.kind === 'restore' ? t('backup.restore_extra') : undefined
+        }
+        busy={confirmBusy}
+        onCancel={() => setConfirm(null)}
+        onConfirm={doConfirm}
+      />
     </section>
   )
 }

@@ -5,19 +5,24 @@
  *  - backup:list-backups → BackupInfo[]
  *  - backup:create-now    → BackupInfo (ротация по backup_keep_count из settings)
  *  - backup:delete        → void
+ *  - backup:restore       → закрывает БД, восстанавливает файлы, перезапускает
+ *                           приложение (после рестарта — обычный unlock паролем,
+ *                           действовавшим на момент бэкапа)
  *  - backup:export-json   → string (фактический путь сохранения)
- *
- * Восстановление из бэкапа намеренно вынесено в отдельную «опасную» операцию
- * — её сделаем позже, когда добавим UI с подтверждением и закрытием БД.
  *
  * Экспорт открывает системный «Save As» диалог; пользователь сам выбирает
  * место сохранения. Это безопаснее, чем класть plaintext рядом с userData.
  */
-import { dialog, ipcMain } from 'electron'
+import { app, dialog, ipcMain } from 'electron'
 import { z } from 'zod'
-import { getDb } from '../db/connection'
+import { closeDatabase, getDb } from '../db/connection'
 import { getSetting } from '../db/repositories/settingsRepo'
-import { createBackup, deleteBackup, listBackups } from '../services/backup'
+import {
+  createBackup,
+  deleteBackup,
+  listBackups,
+  restoreBackup
+} from '../services/backup'
 import { exportToJson } from '../services/exportJson'
 
 const deleteInput = z.object({
@@ -35,6 +40,17 @@ export function registerBackupIpc(): void {
   ipcMain.handle('backup:delete', (_e, raw) => {
     const { path } = deleteInput.parse(raw)
     deleteBackup(path)
+  })
+
+  ipcMain.handle('backup:restore', (_e, raw) => {
+    const { path } = deleteInput.parse(raw)
+    // Заменять файл БД под открытым соединением нельзя — сначала закрываем.
+    closeDatabase()
+    restoreBackup(path)
+    // Чистый рестарт: после перезапуска пользователь вводит пароль,
+    // действовавший на момент создания бэкапа.
+    app.relaunch()
+    app.quit()
   })
 
   ipcMain.handle('backup:export-json', async () => {

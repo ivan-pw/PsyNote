@@ -19,6 +19,10 @@ const api: Api = {
     getInfo: () => ipcRenderer.invoke('app:info'),
     quit: () => ipcRenderer.invoke('app:quit')
   },
+  eula: {
+    status: () => ipcRenderer.invoke('eula:status'),
+    accept: (version) => ipcRenderer.invoke('eula:accept', { version })
+  },
   auth: {
     getStatus: () => ipcRenderer.invoke('auth:get-status'),
     getSecurityFlags: () => ipcRenderer.invoke('auth:get-security-flags'),
@@ -117,6 +121,7 @@ const api: Api = {
     list: () => ipcRenderer.invoke('backup:list-backups'),
     createNow: () => ipcRenderer.invoke('backup:create-now'),
     delete: (path) => ipcRenderer.invoke('backup:delete', { path }),
+    restore: (path) => ipcRenderer.invoke('backup:restore', { path }),
     exportJson: () => ipcRenderer.invoke('backup:export-json')
   }
 }

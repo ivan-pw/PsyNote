@@ -90,15 +90,15 @@ function rotateBackups(keepCount: number): void {
   for (const b of stale) {
     try {
       unlinkSync(b.path)
-    } catch {
-      // ignore
+    } catch (err) {
+      console.warn(`Ротация бэкапов: не удалось удалить ${b.path}:`, err)
     }
     // Парный salt-файл удаляем тоже.
     const saltCandidate = b.path.replace(FILE_SUFFIX_DB, FILE_SUFFIX_SALT)
     try {
       unlinkSync(saltCandidate)
-    } catch {
-      // ignore
+    } catch (err) {
+      console.warn(`Ротация бэкапов: не удалось удалить ${saltCandidate}:`, err)
     }
   }
 }
@@ -111,4 +111,45 @@ export function deleteBackup(path: string): void {
   if (existsSync(path)) unlinkSync(path)
   const saltCandidate = path.replace(FILE_SUFFIX_DB, FILE_SUFFIX_SALT)
   if (existsSync(saltCandidate)) unlinkSync(saltCandidate)
+}
+
+/**
+ * Восстановить БД из бэкапа. Вызывается ТОЛЬКО при закрытой БД
+ * (IPC-обработчик сначала делает closeDatabase()).
+ *
+ * Алгоритм:
+ *  1. Валидация: путь внутри backups/, пара .db + .salt существует.
+ *  2. Страховочная копия текущих psynote.db/.salt → backups/pre-restore-<ts>.*
+ *     (на случай «восстановил не то»).
+ *  3. Копирование бэкапа поверх живых файлов + удаление -wal/-shm
+ *     (хвосты WAL от прежней БД сделали бы восстановленный файл нечитаемым).
+ */
+export function restoreBackup(path: string): void {
+  if (!path.startsWith(backupsDir())) {
+    throw new Error('Путь вне директории бэкапов')
+  }
+  const saltSrc = path.replace(FILE_SUFFIX_DB, FILE_SUFFIX_SALT)
+  if (!existsSync(path)) throw new Error('Файл бэкапа не найден')
+  if (!existsSync(saltSrc)) {
+    throw new Error('Рядом с бэкапом нет парного .salt — восстановление невозможно')
+  }
+
+  ensureDir()
+  const ts = tsForFilename()
+  if (existsSync(dbPath())) {
+    copyFileSync(dbPath(), join(backupsDir(), `pre-restore-${ts}${FILE_SUFFIX_DB}`))
+  }
+  if (existsSync(saltPath())) {
+    copyFileSync(saltPath(), join(backupsDir(), `pre-restore-${ts}${FILE_SUFFIX_SALT}`))
+  }
+
+  copyFileSync(path, dbPath())
+  copyFileSync(saltSrc, saltPath())
+  for (const tail of [`${dbPath()}-wal`, `${dbPath()}-shm`]) {
+    try {
+      unlinkSync(tail)
+    } catch {
+      // файла может не быть — это нормально
+    }
+  }
 }

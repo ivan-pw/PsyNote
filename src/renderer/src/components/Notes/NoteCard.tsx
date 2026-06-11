@@ -5,6 +5,7 @@
  * Цвет рендерится обводкой по всей границе + бейдж с подписью цвета.
  * Тело — preserve-line-breaks. На hover — кнопки редактирования и удаления.
  */
+import { useTranslation } from 'react-i18next'
 import { Pencil, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -24,6 +25,7 @@ type Props = {
 }
 
 export function NoteCard({ note, color, onEdit, onDelete }: Props) {
+  const { t } = useTranslation()
   const accent = color?.hex ?? 'hsl(var(--muted))'
   return (
     <div
@@ -48,12 +50,12 @@ export function NoteCard({ note, color, onEdit, onDelete }: Props) {
                 size="icon"
                 className="size-6 text-muted-foreground"
                 onClick={onEdit}
-                aria-label="Редактировать"
+                aria-label={t('common.edit')}
               >
                 <Pencil className="size-3" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent>Редактировать</TooltipContent>
+            <TooltipContent>{t('common.edit')}</TooltipContent>
           </Tooltip>
           <Tooltip>
             <TooltipTrigger asChild>
@@ -62,12 +64,12 @@ export function NoteCard({ note, color, onEdit, onDelete }: Props) {
                 size="icon"
                 className="size-6 text-muted-foreground hover:text-destructive"
                 onClick={onDelete}
-                aria-label="Удалить"
+                aria-label={t('common.delete')}
               >
                 <Trash2 className="size-3" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent>Удалить</TooltipContent>
+            <TooltipContent>{t('common.delete')}</TooltipContent>
           </Tooltip>
         </div>
       </div>

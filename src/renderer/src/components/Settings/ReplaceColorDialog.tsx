@@ -8,6 +8,7 @@
  * При выборе цвета фильтруем удаляемый — нельзя заменить на самого себя.
  */
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   Dialog,
   DialogContent,
@@ -37,6 +38,7 @@ type Props = {
 }
 
 export function ReplaceColorDialog({ open, target, others, usageCount, onClose }: Props) {
+  const { t } = useTranslation()
   const remove = useDeleteColor()
   const NONE = '__none__'
   const [toId, setToId] = useState<string>(NONE)
@@ -68,22 +70,21 @@ export function ReplaceColorDialog({ open, target, others, usageCount, onClose }
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Удалить цвет «{target.label}»?</DialogTitle>
+          <DialogTitle>{t('colors.replace_title', { label: target.label })}</DialogTitle>
           <DialogDescription>
-            Этим цветом помечены {usageCount} заметок. Выберите, на что заменить —
-            или снимите цвет с этих заметок.
+            {t('colors.replace_description', { count: usageCount })}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-2">
-          <Label htmlFor="to-color">Заменить на</Label>
+          <Label htmlFor="to-color">{t('colors.replace_with')}</Label>
           <Select value={toId} onValueChange={setToId}>
             <SelectTrigger id="to-color">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value={NONE}>
-                <span className="text-muted-foreground">Без цвета</span>
+                <span className="text-muted-foreground">{t('notes.no_color')}</span>
               </SelectItem>
               {others.map((c) => (
                 <SelectItem key={c.id} value={String(c.id)}>
@@ -104,14 +105,14 @@ export function ReplaceColorDialog({ open, target, others, usageCount, onClose }
 
         <DialogFooter>
           <Button variant="outline" onClick={onClose} disabled={remove.isPending}>
-            Отмена
+            {t('common.cancel')}
           </Button>
           <Button
             variant="destructive"
             onClick={handleSubmit}
             disabled={remove.isPending}
           >
-            {remove.isPending ? '…' : 'Заменить и удалить'}
+            {remove.isPending ? '…' : t('colors.replace_and_delete')}
           </Button>
         </DialogFooter>
       </DialogContent>

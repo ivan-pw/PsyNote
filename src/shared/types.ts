@@ -16,6 +16,8 @@ export type Client = {
   id: number
   full_name: string
   birth_date: string | null
+  /** Год рождения — для случая, когда известен только возраст. */
+  birth_year: number | null
   notes_short: string | null
   current_phone: string | null
   current_email: string | null
@@ -23,6 +25,7 @@ export type Client = {
   current_video_link: string | null
   current_diagnosis: string | null
   current_medications: string | null
+  current_doctor: string | null
   created_at: string
   updated_at: string
   archived_at: string | null
@@ -31,6 +34,7 @@ export type Client = {
 export type ClientCreateInput = {
   full_name: string
   birth_date?: string | null
+  birth_year?: number | null
   notes_short?: string | null
   // Историзируемые поля — если заданы, создаются начальные ревизии.
   phone?: string | null
@@ -39,11 +43,13 @@ export type ClientCreateInput = {
   video_link?: string | null
   diagnosis?: string | null
   medications?: string | null
+  doctor?: string | null
 }
 
 export type ClientProfileUpdate = {
   full_name?: string
   birth_date?: string | null
+  birth_year?: number | null
   notes_short?: string | null
 }
 

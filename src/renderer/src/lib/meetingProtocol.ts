@@ -1,8 +1,9 @@
 /**
  * src/renderer/src/lib/meetingProtocol.ts
  *
- * Метаданные подполей протокола встречи: подпись, порядок отображения,
- * подсказка. Используется в MeetingProtocolDialog и в TimelineItem.
+ * Метаданные подполей протокола встречи: i18n-ключи подписи и подсказки,
+ * порядок отображения (рендерить через t(label) / t(placeholder)).
+ * Используется в MeetingProtocolDialog.
  */
 import type { MeetingProtocol } from '@shared/types'
 
@@ -21,33 +22,33 @@ export const PROTOCOL_FIELDS: Array<{
 }> = [
   {
     key: 'summary',
-    label: 'Ход сессии',
-    placeholder: 'О чём говорили, ключевые темы, важные моменты'
+    label: 'protocol.fields.summary',
+    placeholder: 'protocol.placeholder.summary'
   },
   {
     key: 'techniques',
-    label: 'Применённые техники',
-    placeholder: 'Использованные методы, упражнения, интервенции'
+    label: 'protocol.fields.techniques',
+    placeholder: 'protocol.placeholder.techniques'
   },
   {
     key: 'client_state',
-    label: 'Состояние клиента',
-    placeholder: 'Наблюдения: эмоции, динамика, инсайты'
+    label: 'protocol.fields.client_state',
+    placeholder: 'protocol.placeholder.client_state'
   },
   {
     key: 'homework',
-    label: 'Домашнее задание',
-    placeholder: 'Что клиент должен сделать к следующей встрече'
+    label: 'protocol.fields.homework',
+    placeholder: 'protocol.placeholder.homework'
   },
   {
     key: 'plan_next',
-    label: 'План на следующую встречу',
-    placeholder: 'На чём планируем сосредоточиться'
+    label: 'protocol.fields.plan_next',
+    placeholder: 'protocol.placeholder.plan_next'
   },
   {
     key: 'private_notes',
-    label: 'Приватные заметки',
-    placeholder: 'Только для терапевта; гипотезы, идеи'
+    label: 'protocol.fields.private_notes',
+    placeholder: 'protocol.placeholder.private_notes'
   }
 ]
 

@@ -83,10 +83,10 @@ export default function ClientsListPage() {
 
       <div className="flex-1 overflow-auto">
         {isLoading ? (
-          <p className="p-6 text-sm text-muted-foreground">Загрузка…</p>
+          <p className="p-6 text-sm text-muted-foreground">{t('app.loading')}</p>
         ) : error ? (
           <p className="p-6 text-sm text-destructive">
-            Ошибка: {error instanceof Error ? error.message : String(error)}
+            {t('common.error')}: {error instanceof Error ? error.message : String(error)}
           </p>
         ) : filtered.length === 0 ? (
           <div className="grid h-full place-items-center text-sm text-muted-foreground">
@@ -96,10 +96,10 @@ export default function ClientsListPage() {
           <table className="w-full text-sm">
             <thead className="sticky top-0 bg-background/95 text-xs uppercase tracking-wide text-muted-foreground backdrop-blur">
               <tr className="border-b">
-                <th className="px-6 py-2 text-left font-medium">ФИО</th>
-                <th className="px-2 py-2 text-left font-medium">Телефон</th>
-                <th className="px-2 py-2 text-left font-medium">Email</th>
-                <th className="px-2 py-2 text-left font-medium">Создан</th>
+                <th className="px-6 py-2 text-left font-medium">{t('client.full_name')}</th>
+                <th className="px-2 py-2 text-left font-medium">{t('fields.phone')}</th>
+                <th className="px-2 py-2 text-left font-medium">{t('fields.email')}</th>
+                <th className="px-2 py-2 text-left font-medium">{t('clients.col_created')}</th>
                 <th className="px-6 py-2 text-right font-medium" />
               </tr>
             </thead>
@@ -117,7 +117,7 @@ export default function ClientsListPage() {
                         className="flex items-center gap-2 hover:underline"
                       >
                         <span className="font-medium">{c.full_name}</span>
-                        {archived && <Badge variant="secondary">в архиве</Badge>}
+                        {archived && <Badge variant="secondary">{t('clients.archived_badge')}</Badge>}
                       </Link>
                       {c.notes_short && (
                         <div className="mt-0.5 text-xs text-muted-foreground">
@@ -147,7 +147,7 @@ export default function ClientsListPage() {
                                 <ArchiveRestore className="size-4" />
                               </Button>
                             </TooltipTrigger>
-                            <TooltipContent>Восстановить</TooltipContent>
+                            <TooltipContent>{t('common.restore')}</TooltipContent>
                           </Tooltip>
                         ) : (
                           <Tooltip>
@@ -160,7 +160,7 @@ export default function ClientsListPage() {
                                 <Archive className="size-4" />
                               </Button>
                             </TooltipTrigger>
-                            <TooltipContent>В архив</TooltipContent>
+                            <TooltipContent>{t('common.archive')}</TooltipContent>
                           </Tooltip>
                         )}
                         {archived && (
@@ -175,9 +175,7 @@ export default function ClientsListPage() {
                                 <Trash2 className="size-4" />
                               </Button>
                             </TooltipTrigger>
-                            <TooltipContent>
-                              Удаление навсегда — в Настройках → Корзина
-                            </TooltipContent>
+                            <TooltipContent>{t('clients.delete_hint')}</TooltipContent>
                           </Tooltip>
                         )}
                       </div>

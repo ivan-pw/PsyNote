@@ -18,6 +18,7 @@
  *  - сохранение по «Сохранить»; Esc — отмена; Cmd/Ctrl+Enter — сохранить.
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Check, Pencil, Pill, Plus, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -39,6 +40,7 @@ type Props = {
 }
 
 export function MedicationsField({ clientId, value }: Props) {
+  const { t } = useTranslation()
   const update = useUpdateClientField(clientId)
   const { data: presets } = useMedicationPresets()
   const [editing, setEditing] = useState(false)
@@ -130,7 +132,7 @@ export function MedicationsField({ clientId, value }: Props) {
     <div className="group flex items-start gap-2 rounded-md px-2 py-1.5 transition-colors hover:bg-accent/30">
       <Pill className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
       <div className="min-w-0 flex-1">
-        <div className="text-xs text-muted-foreground">Медикаменты</div>
+        <div className="text-xs text-muted-foreground">{t('fields.medications')}</div>
 
         {editing ? (
           <div className="mt-1 space-y-1.5">
@@ -144,7 +146,7 @@ export function MedicationsField({ clientId, value }: Props) {
                   {it}
                   <button
                     type="button"
-                    aria-label={`Убрать ${it}`}
+                    aria-label={t('medications.remove', { value: it })}
                     onClick={() => removeAt(i)}
                     className="rounded hover:bg-destructive/20"
                   >
@@ -159,8 +161,8 @@ export function MedicationsField({ clientId, value }: Props) {
                 onKeyDown={onInputKeyDown}
                 placeholder={
                   items.length === 0
-                    ? 'Начните вводить название…'
-                    : 'Ещё одно…'
+                    ? t('medications.start_typing')
+                    : t('medications.one_more')
                 }
                 className="h-7 min-w-[140px] flex-1 border-0 bg-transparent px-1 focus-visible:ring-0"
               />
@@ -175,13 +177,12 @@ export function MedicationsField({ clientId, value }: Props) {
                   className="flex w-full items-center gap-2 px-2 py-1.5 text-left text-sm hover:bg-accent"
                 >
                   <Plus className="size-3.5" />
-                  Добавить «{input.trim()}»
+                  {t('medications.add_custom', { value: input.trim() })}
                 </button>
               )}
               {suggestions.length === 0 && !input.trim() && (
                 <div className="px-2 py-1.5 text-xs text-muted-foreground">
-                  Нет подходящих пресетов. Введите название и нажмите Enter,
-                  чтобы добавить как кастомное.
+                  {t('medications.no_presets')}
                 </div>
               )}
               {suggestions.map((s) => (
@@ -206,7 +207,7 @@ export function MedicationsField({ clientId, value }: Props) {
                     className="flex w-full items-center gap-2 border-t px-2 py-1 text-left text-sm hover:bg-accent"
                   >
                     <Plus className="size-3.5" />
-                    Добавить «{input.trim()}»
+                    {t('medications.add_custom', { value: input.trim() })}
                   </button>
                 )}
             </div>
@@ -214,11 +215,11 @@ export function MedicationsField({ clientId, value }: Props) {
             <div className="flex items-center gap-2">
               <Button size="sm" onClick={() => void save()} disabled={update.isPending}>
                 <Check className="size-4" />
-                Сохранить
+                {t('common.save')}
               </Button>
               <Button size="sm" variant="outline" onClick={cancel}>
                 <X className="size-4" />
-                Отмена
+                {t('common.cancel')}
               </Button>
               {error && <span className="text-xs text-destructive">{error}</span>}
             </div>
@@ -245,14 +246,14 @@ export function MedicationsField({ clientId, value }: Props) {
               <Button
                 variant="ghost"
                 size="icon"
-                aria-label="Редактировать"
+                aria-label={t('common.edit')}
                 className="size-7 text-muted-foreground"
                 onClick={() => setEditing(true)}
               >
                 <Pencil className={cn('size-3.5')} />
               </Button>
             </TooltipTrigger>
-            <TooltipContent>Редактировать</TooltipContent>
+            <TooltipContent>{t('common.edit')}</TooltipContent>
           </Tooltip>
           <RevisionHistoryPopover clientId={clientId} field="medications" />
         </div>

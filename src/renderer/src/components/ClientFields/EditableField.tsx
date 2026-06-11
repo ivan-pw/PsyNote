@@ -13,6 +13,7 @@
  * Рядом с каждым полем — иконка истории (RevisionHistoryPopover).
  */
 import { useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Check, ExternalLink, Pencil, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -35,13 +36,25 @@ type Props = {
   clientId: number
   field: HistorizedField
   value: string | null
+  /** Открыть поле сразу в режиме редактирования (для «+ Добавить поле»). */
+  defaultEditing?: boolean
+  /** Вызывается, когда редактирование пустого поля закончилось без значения —
+   *  родитель может снова спрятать поле. */
+  onDismissEmpty?: () => void
 }
 
-export function EditableField({ clientId, field, value }: Props) {
+export function EditableField({
+  clientId,
+  field,
+  value,
+  defaultEditing = false,
+  onDismissEmpty
+}: Props) {
+  const { t } = useTranslation()
   const meta = HISTORIZED_FIELD_META[field]
   const Icon = meta.icon
   const update = useUpdateClientField(clientId)
-  const [editing, setEditing] = useState(false)
+  const [editing, setEditing] = useState(defaultEditing)
   const [draft, setDraft] = useState(value ?? '')
   const [error, setError] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement | null>(null)
@@ -63,11 +76,13 @@ export function EditableField({ clientId, field, value }: Props) {
     const current = value?.trim() ?? ''
     if (next === current) {
       setEditing(false)
+      if (next === '') onDismissEmpty?.()
       return
     }
     try {
       await update.mutateAsync({ field, value: next === '' ? null : next })
       setEditing(false)
+      if (next === '') onDismissEmpty?.()
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
     }
@@ -77,6 +92,7 @@ export function EditableField({ clientId, field, value }: Props) {
     setDraft(value ?? '')
     setEditing(false)
     setError(null)
+    if (!value) onDismissEmpty?.()
   }
 
   const url = value ? parseExternalUrl(field, value) : null
@@ -85,14 +101,14 @@ export function EditableField({ clientId, field, value }: Props) {
     <div className="group flex items-start gap-2 rounded-md px-2 py-1.5 transition-colors hover:bg-accent/30">
       <Icon className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
       <div className="min-w-0 flex-1">
-        <div className="text-xs text-muted-foreground">{meta.label}</div>
+        <div className="text-xs text-muted-foreground">{t(meta.label)}</div>
         {editing ? (
           <div className="mt-1 space-y-1">
             {meta.multiline ? (
               <Textarea
                 ref={(el) => (inputRef.current = el)}
                 value={draft}
-                placeholder={meta.placeholder}
+                placeholder={t(meta.placeholder)}
                 onChange={(e) => setDraft(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === 'Escape') cancel()
@@ -104,7 +120,7 @@ export function EditableField({ clientId, field, value }: Props) {
               <Input
                 ref={(el) => (inputRef.current = el)}
                 value={draft}
-                placeholder={meta.placeholder}
+                placeholder={t(meta.placeholder)}
                 onChange={(e) => setDraft(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === 'Escape') cancel()
@@ -115,11 +131,11 @@ export function EditableField({ clientId, field, value }: Props) {
             <div className="flex items-center gap-2">
               <Button size="sm" onClick={() => void save()} disabled={update.isPending}>
                 <Check className="size-4" />
-                Сохранить
+                {t('common.save')}
               </Button>
               <Button size="sm" variant="outline" onClick={cancel}>
                 <X className="size-4" />
-                Отмена
+                {t('common.cancel')}
               </Button>
               {error && <span className="text-xs text-destructive">{error}</span>}
             </div>
@@ -154,14 +170,14 @@ export function EditableField({ clientId, field, value }: Props) {
               <Button
                 variant="ghost"
                 size="icon"
-                aria-label="Редактировать"
+                aria-label={t('common.edit')}
                 className="size-7 text-muted-foreground"
                 onClick={() => setEditing(true)}
               >
                 <Pencil className="size-3.5" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent>Редактировать</TooltipContent>
+            <TooltipContent>{t('common.edit')}</TooltipContent>
           </Tooltip>
           <RevisionHistoryPopover clientId={clientId} field={field} />
         </div>

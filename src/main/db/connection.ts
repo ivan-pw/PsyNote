@@ -117,6 +117,10 @@ export function setupDatabase(password: string): void {
     }
     wipePartialState()
     throw err
+  } finally {
+    // Сужаем окно жизни производного ключа в памяти. Это best-effort:
+    // hex-копию внутри строки-литерала и буферы SQLCipher затереть нельзя.
+    key.fill(0)
   }
 
   writeFileSync(saltPath(), packSaltV2(salt), { mode: 0o600 })
@@ -163,6 +167,9 @@ export function unlockDatabase(password: string): boolean {
       return false
     }
     throw err
+  } finally {
+    // Best-effort зануление производного ключа (см. комментарий в setupDatabase).
+    key.fill(0)
   }
 
   dbRef = db
@@ -205,64 +212,73 @@ export function changePassword(oldPassword: string, newPassword: string): void {
     readFileSync(saltPath())
   )
   const oldKey = deriveKey(oldVersion, oldPassword, oldSaltRaw)
+  let newKey: Buffer | null = null
 
-  // Проверка старого пароля через отдельное readonly-соединение.
-  const probe = new Database(dbPath(), { readonly: true })
   try {
-    probe.pragma(`cipher='sqlcipher'`)
-    probe.pragma(`key=${keyToSqlcipherLiteral(oldKey)}`)
-    probe.prepare('SELECT 1').get()
-  } catch {
+    // Проверка старого пароля через отдельное readonly-соединение.
+    const probe = new Database(dbPath(), { readonly: true })
     try {
-      probe.close()
+      probe.pragma(`cipher='sqlcipher'`)
+      probe.pragma(`key=${keyToSqlcipherLiteral(oldKey)}`)
+      probe.prepare('SELECT 1').get()
     } catch {
-      // ignore
+      try {
+        probe.close()
+      } catch {
+        // ignore
+      }
+      throw new Error('Текущий пароль неверный')
     }
-    throw new Error('Текущий пароль неверный')
-  }
-  probe.close()
+    probe.close()
 
-  const newSalt = generateSaltV2()
-  const newKey = deriveKey(2, newPassword, newSalt)
+    const newSalt = generateSaltV2()
+    newKey = deriveKey(2, newPassword, newSalt)
 
-  // SQLCipher не поддерживает PRAGMA rekey в WAL-режиме
-  // (известное ограничение: «Rekeying is not supported in WAL journal mode»).
-  // Workaround: временно переключаемся на DELETE-журнал, делаем rekey,
-  // потом возвращаем WAL. На время операции БД остаётся консистентной —
-  // другие соединения к этому файлу из приложения не открываются.
-  const prevJournalMode =
-    (dbRef.pragma('journal_mode', { simple: true }) as string) ?? 'wal'
+    // SQLCipher не поддерживает PRAGMA rekey в WAL-режиме
+    // (известное ограничение: «Rekeying is not supported in WAL journal mode»).
+    // Workaround: временно переключаемся на DELETE-журнал, делаем rekey,
+    // потом возвращаем WAL. На время операции БД остаётся консистентной —
+    // другие соединения к этому файлу из приложения не открываются.
+    const prevJournalMode =
+      (dbRef.pragma('journal_mode', { simple: true }) as string) ?? 'wal'
 
-  function rekeyWithoutWal(literalKey: string): void {
-    dbRef!.pragma('journal_mode = DELETE')
+    const rekeyWithoutWal = (literalKey: string): void => {
+      dbRef!.pragma('journal_mode = DELETE')
+      try {
+        dbRef!.pragma(`rekey=${literalKey}`)
+      } finally {
+        // Возвращаем исходный журнальный режим в любом случае.
+        dbRef!.pragma(`journal_mode = ${prevJournalMode}`)
+      }
+    }
+
+    // 1. rekey БД новым ключом.
+    rekeyWithoutWal(keyToSqlcipherLiteral(newKey))
+
+    // 2. Пишем новую соль атомарно: tmp → rename.
+    const tmpSalt = saltPath() + '.tmp'
+    writeFileSync(tmpSalt, packSaltV2(newSalt), { mode: 0o600 })
     try {
-      dbRef!.pragma(`rekey=${literalKey}`)
-    } finally {
-      // Возвращаем исходный журнальный режим в любом случае.
-      dbRef!.pragma(`journal_mode = ${prevJournalMode}`)
+      renameSync(tmpSalt, saltPath())
+    } catch (err) {
+      // Откат: возвращаем старый ключ (тоже через DELETE-журнал).
+      try {
+        rekeyWithoutWal(keyToSqlcipherLiteral(oldKey))
+      } catch {
+        throw new Error(
+          'Не удалось обновить файл соли и откатить пароль. Восстановите из резервной копии.'
+        )
+      }
+      throw err
     }
+
+    kdfNeedsUpgrade = false
+    weakPasswordDetected = false
+  } finally {
+    // Best-effort зануление производных ключей: сужаем окно их жизни в памяти.
+    // Hex-копии в строках-литералах и внутренних буферах SQLCipher затереть
+    // из JS нельзя — это снижение экспозиции, а не гарантия.
+    oldKey.fill(0)
+    newKey?.fill(0)
   }
-
-  // 1. rekey БД новым ключом.
-  rekeyWithoutWal(keyToSqlcipherLiteral(newKey))
-
-  // 2. Пишем новую соль атомарно: tmp → rename.
-  const tmpSalt = saltPath() + '.tmp'
-  writeFileSync(tmpSalt, packSaltV2(newSalt), { mode: 0o600 })
-  try {
-    renameSync(tmpSalt, saltPath())
-  } catch (err) {
-    // Откат: возвращаем старый ключ (тоже через DELETE-журнал).
-    try {
-      rekeyWithoutWal(keyToSqlcipherLiteral(oldKey))
-    } catch {
-      throw new Error(
-        'Не удалось обновить файл соли и откатить пароль. Восстановите из резервной копии.'
-      )
-    }
-    throw err
-  }
-
-  kdfNeedsUpgrade = false
-  weakPasswordDetected = false
 }

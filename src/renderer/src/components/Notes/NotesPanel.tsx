@@ -11,6 +11,7 @@
  *    чтобы инвариант «единый путь для destructive-действия» соблюдался.
  */
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Plus, StickyNote } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useNotesByClient } from '@/hooks/useNotes'
@@ -23,6 +24,7 @@ type Props = {
 }
 
 export function NotesPanel({ clientId }: Props) {
+  const { t } = useTranslation()
   const { data: notes, isLoading } = useNotesByClient(clientId)
   const { data: colors } = useColors()
   const [dialog, setDialog] = useState<NoteDialogState | null>(null)
@@ -32,18 +34,18 @@ export function NotesPanel({ clientId }: Props) {
       <div className="mb-2 flex items-center justify-between">
         <div className="flex items-center gap-2 text-sm font-medium">
           <StickyNote className="size-4 text-muted-foreground" />
-          Заметки
+          {t('notes.title')}
         </div>
         <Button size="sm" variant="outline" onClick={() => setDialog({ mode: 'create' })}>
           <Plus className="size-4" />
-          Новая
+          {t('notes.new')}
         </Button>
       </div>
 
       {isLoading ? (
-        <p className="text-sm text-muted-foreground">Загрузка…</p>
+        <p className="text-sm text-muted-foreground">{t('app.loading')}</p>
       ) : !notes || notes.length === 0 ? (
-        <p className="text-sm text-muted-foreground">Пока заметок нет.</p>
+        <p className="text-sm text-muted-foreground">{t('notes.empty')}</p>
       ) : (
         <div className="flex flex-col gap-2">
           {notes.map((n) => (

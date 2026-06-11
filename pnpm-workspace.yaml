@@ -3,6 +3,9 @@
 # в postinstall через `electron-builder install-app-deps`. Эти флаги просто
 # подавляют предупреждение ERR_PNPM_IGNORED_BUILDS.
 allowBuilds:
+  # better-sqlite3 (без шифров) используется ТОЛЬКО в vitest-тестах БД:
+  # собирается под Node ABI, тогда как *-multiple-ciphers пересобран под Electron.
+  better-sqlite3: true
   better-sqlite3-multiple-ciphers: true
   electron: true
   esbuild: true

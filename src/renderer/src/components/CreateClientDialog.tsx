@@ -8,6 +8,7 @@
  */
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import {
   Dialog,
   DialogContent,
@@ -28,26 +29,31 @@ import {
   HISTORIZED_FIELD_META,
   type HistorizedField
 } from '@/lib/historized'
+import { ageToBirthYear } from '@/lib/age'
 
 type Form = {
   full_name: string
   birth_date: string
+  age: string // количество лет, если дата рождения неизвестна
   notes_short: string
 } & Record<HistorizedField, string>
 
 const empty: Form = {
   full_name: '',
   birth_date: '',
+  age: '',
   notes_short: '',
   phone: '',
   email: '',
   messenger: '',
   video_link: '',
   diagnosis: '',
-  medications: ''
+  medications: '',
+  doctor: ''
 }
 
 export function CreateClientDialog() {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const [form, setForm] = useState<Form>(empty)
   const [error, setError] = useState<string | null>(null)
@@ -63,20 +69,29 @@ export function CreateClientDialog() {
     e.preventDefault()
     setError(null)
     if (!form.full_name.trim()) {
-      setError('ФИО обязательно')
+      setError(t('client.full_name_required'))
+      return
+    }
+    const age = form.age.trim() === '' ? null : Number(form.age.trim())
+    if (age !== null && (!Number.isInteger(age) || age < 0 || age > 120)) {
+      setError(t('client.age_invalid'))
       return
     }
     try {
       const client = await create.mutateAsync({
         full_name: form.full_name.trim(),
         birth_date: form.birth_date || null,
+        // Дата рождения приоритетнее: возраст сохраняем как год рождения
+        // только если точной даты нет.
+        birth_year: !form.birth_date && age !== null ? ageToBirthYear(age) : null,
         notes_short: form.notes_short.trim() || null,
         phone: form.phone.trim() || null,
         email: form.email.trim() || null,
         messenger: form.messenger.trim() || null,
         video_link: form.video_link.trim() || null,
         diagnosis: form.diagnosis.trim() || null,
-        medications: form.medications.trim() || null
+        medications: form.medications.trim() || null,
+        doctor: form.doctor.trim() || null
       })
       setOpen(false)
       reset()
@@ -97,23 +112,20 @@ export function CreateClientDialog() {
       <DialogTrigger asChild>
         <Button>
           <Plus className="size-4" />
-          Новый клиент
+          {t('clients.new')}
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-h-[85vh] max-w-2xl overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Новый клиент</DialogTitle>
-          <DialogDescription>
-            Достаточно указать ФИО — остальные поля можно заполнить позже на
-            странице клиента. Все изменения будут отражены в его таймлайне.
-          </DialogDescription>
+          <DialogTitle>{t('clients.new')}</DialogTitle>
+          <DialogDescription>{t('client.create_description')}</DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="col-span-2 space-y-1">
               <Label htmlFor="full_name">
-                ФИО <span className="text-destructive">*</span>
+                {t('client.full_name')} <span className="text-destructive">*</span>
               </Label>
               <Input
                 id="full_name"
@@ -123,7 +135,7 @@ export function CreateClientDialog() {
               />
             </div>
             <div className="space-y-1">
-              <Label htmlFor="birth_date">Дата рождения</Label>
+              <Label htmlFor="birth_date">{t('client.birth_date')}</Label>
               <Input
                 id="birth_date"
                 type="date"
@@ -132,7 +144,25 @@ export function CreateClientDialog() {
               />
             </div>
             <div className="space-y-1">
-              <Label htmlFor="notes_short">Краткое примечание</Label>
+              <Label htmlFor="age">
+                {t('client.age_years')}{' '}
+                <span className="font-normal text-muted-foreground">
+                  {t('client.age_unknown_hint')}
+                </span>
+              </Label>
+              <Input
+                id="age"
+                type="number"
+                min={0}
+                max={120}
+                placeholder="34"
+                value={form.age}
+                disabled={Boolean(form.birth_date)}
+                onChange={(e) => setForm((f) => ({ ...f, age: e.target.value }))}
+              />
+            </div>
+            <div className="col-span-2 space-y-1">
+              <Label htmlFor="notes_short">{t('client.notes_short')}</Label>
               <Input
                 id="notes_short"
                 value={form.notes_short}
@@ -147,11 +177,11 @@ export function CreateClientDialog() {
                   key={field}
                   className={meta.multiline ? 'col-span-2 space-y-1' : 'space-y-1'}
                 >
-                  <Label htmlFor={field}>{meta.label}</Label>
+                  <Label htmlFor={field}>{t(meta.label)}</Label>
                   {meta.multiline ? (
                     <Textarea
                       id={field}
-                      placeholder={meta.placeholder}
+                      placeholder={t(meta.placeholder)}
                       value={form[field]}
                       onChange={(e) =>
                         setForm((f) => ({ ...f, [field]: e.target.value }))
@@ -160,7 +190,7 @@ export function CreateClientDialog() {
                   ) : (
                     <Input
                       id={field}
-                      placeholder={meta.placeholder}
+                      placeholder={t(meta.placeholder)}
                       value={form[field]}
                       onChange={(e) =>
                         setForm((f) => ({ ...f, [field]: e.target.value }))
@@ -184,10 +214,10 @@ export function CreateClientDialog() {
               }}
               disabled={create.isPending}
             >
-              Отмена
+              {t('common.cancel')}
             </Button>
             <Button type="submit" disabled={create.isPending}>
-              {create.isPending ? 'Создаём…' : 'Создать'}
+              {create.isPending ? t('client.creating') : t('common.create')}
             </Button>
           </DialogFooter>
         </form>

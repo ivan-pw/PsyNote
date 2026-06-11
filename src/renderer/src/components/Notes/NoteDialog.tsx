@@ -7,6 +7,7 @@
  * Удаление — через ConfirmDestructiveDialog (ввод слова «удалить»/«delete»).
  */
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Trash2 } from 'lucide-react'
 import {
   Dialog,
@@ -46,6 +47,7 @@ type Props = {
 }
 
 export function NoteDialog({ open, clientId, state, onClose }: Props) {
+  const { t } = useTranslation()
   const { data: colors } = useColors()
   const create = useCreateNote(clientId)
   const update = useUpdateNote(clientId)
@@ -77,7 +79,7 @@ export function NoteDialog({ open, clientId, state, onClose }: Props) {
     if (!state) return
     setError(null)
     if (!body.trim()) {
-      setError('Текст заметки не может быть пустым')
+      setError(t('notes.body_required'))
       return
     }
     try {
@@ -113,21 +115,21 @@ export function NoteDialog({ open, clientId, state, onClose }: Props) {
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{isEdit ? 'Заметка' : 'Новая заметка'}</DialogTitle>
+          <DialogTitle>{isEdit ? t('notes.note') : t('notes.new_note')}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1">
-            <Label htmlFor="color">Цвет</Label>
+            <Label htmlFor="color">{t('notes.color')}</Label>
             <Select
               value={colorId === null ? NO_COLOR : String(colorId)}
               onValueChange={(v) => setColorId(v === NO_COLOR ? null : Number(v))}
             >
               <SelectTrigger id="color">
-                <SelectValue placeholder="Без цвета" />
+                <SelectValue placeholder={t('notes.no_color')} />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value={NO_COLOR}>
-                  <span className="text-muted-foreground">Без цвета</span>
+                  <span className="text-muted-foreground">{t('notes.no_color')}</span>
                 </SelectItem>
                 {(colors ?? []).map((c) => (
                   <SelectItem key={c.id} value={String(c.id)}>
@@ -145,7 +147,7 @@ export function NoteDialog({ open, clientId, state, onClose }: Props) {
           </div>
 
           <div className="space-y-1">
-            <Label htmlFor="body">Текст</Label>
+            <Label htmlFor="body">{t('notes.body')}</Label>
             <Textarea
               id="body"
               rows={6}
@@ -172,14 +174,14 @@ export function NoteDialog({ open, clientId, state, onClose }: Props) {
                 disabled={busy}
               >
                 <Trash2 className="size-4" />
-                Удалить
+                {t('common.delete')}
               </Button>
             )}
             <Button type="button" variant="outline" onClick={onClose} disabled={busy}>
-              Отмена
+              {t('common.cancel')}
             </Button>
             <Button type="submit" disabled={busy}>
-              {busy ? '…' : isEdit ? 'Сохранить' : 'Создать'}
+              {busy ? '…' : isEdit ? t('common.save') : t('common.create')}
             </Button>
           </DialogFooter>
         </form>
@@ -188,7 +190,7 @@ export function NoteDialog({ open, clientId, state, onClose }: Props) {
 
     <ConfirmDestructiveDialog
       open={confirmDelete}
-      itemLabel="Эта заметка будет удалена. Запись о её удалении останется в таймлайне."
+      itemLabel={t('notes.delete_confirm')}
       busy={remove.isPending}
       onCancel={() => setConfirmDelete(false)}
       onConfirm={doDelete}

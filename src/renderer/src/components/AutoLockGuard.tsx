@@ -21,7 +21,7 @@ const WARN_BEFORE_MS = 30_000 // показать «осталось 30 с» з�
 const ACTIVITY_EVENTS = ['mousemove', 'mousedown', 'keydown', 'touchstart'] as const
 
 export function AutoLockGuard({ children }: { children: React.ReactNode }) {
-  useTranslation() // на будущее, для локализации тостов
+  const { t } = useTranslation()
   const unlocked = useAuthStore((s) => s.unlocked)
   const lock = useAuthStore((s) => s.lock)
   // По умолчанию автоблокировка выключена. Включается явно в Settings.
@@ -53,8 +53,8 @@ export function AutoLockGuard({ children }: { children: React.ReactNode }) {
       warnedRef.current = false
       warnTimer.current = setTimeout(() => {
         warnedRef.current = true
-        toast.warning('Сейчас приложение заблокируется', {
-          description: 'Двиньте мышь или нажмите клавишу, чтобы остаться в сессии.',
+        toast.warning(t('security.autolock_warning'), {
+          description: t('security.autolock_warning_description'),
           duration: WARN_BEFORE_MS
         })
       }, warnMs)
@@ -77,7 +77,7 @@ export function AutoLockGuard({ children }: { children: React.ReactNode }) {
         window.removeEventListener(ev, onActivity)
       }
     }
-  }, [unlocked, enabled, minutes, lock])
+  }, [unlocked, enabled, minutes, lock, t])
 
   return <>{children}</>
 }

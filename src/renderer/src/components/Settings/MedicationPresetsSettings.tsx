@@ -9,6 +9,7 @@
  * у клиентов значениями: удаление пресета не трогает их.
  */
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { ArrowDown, ArrowUp, Plus, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -18,6 +19,7 @@ import {
   TooltipTrigger
 } from '@/components/ui/tooltip'
 import { toast } from '@/components/ui/sonner'
+import { ConfirmDestructiveDialog } from '@/components/ConfirmDestructiveDialog'
 import {
   useCreateMedicationPreset,
   useDeleteMedicationPreset,
@@ -28,6 +30,7 @@ import {
 import type { MedicationPreset } from '@shared/types'
 
 export function MedicationPresetsSettings() {
+  const { t } = useTranslation()
   const { data: items, isLoading } = useMedicationPresets()
   const create = useCreateMedicationPreset()
   const update = useUpdateMedicationPreset()
@@ -36,12 +39,13 @@ export function MedicationPresetsSettings() {
 
   const [newName, setNewName] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [confirmDelete, setConfirmDelete] = useState<MedicationPreset | null>(null)
 
   async function handleCreate() {
     if (newName === null) return
     const v = newName.trim()
     if (!v) {
-      setError('Введите название')
+      setError(t('presets.name_required'))
       return
     }
     setError(null)
@@ -53,14 +57,14 @@ export function MedicationPresetsSettings() {
     }
   }
 
-  async function handleDelete(p: MedicationPreset) {
-    if (!window.confirm(`Удалить пресет «${p.name}»?\nЭто не затронет уже сохранённых значений у клиентов.`)) {
-      return
-    }
+  async function doDelete() {
+    if (!confirmDelete) return
     try {
-      await remove.mutateAsync(p.id)
+      await remove.mutateAsync(confirmDelete.id)
+      setConfirmDelete(null)
     } catch (err) {
       toast.error(err instanceof Error ? err.message : String(err))
+      setConfirmDelete(null)
     }
   }
 
@@ -77,17 +81,13 @@ export function MedicationPresetsSettings() {
 
   return (
     <section className="space-y-3">
-      <p className="text-xs text-muted-foreground">
-        Этот список используется для автодополнения в поле «Медикаменты» на
-        странице клиента. Кастомные значения, введённые на странице клиента,
-        сюда автоматически не попадают — добавляйте их вручную.
-      </p>
+      <p className="text-xs text-muted-foreground">{t('presets.description')}</p>
 
       {isLoading ? (
-        <p className="text-sm text-muted-foreground">Загрузка…</p>
+        <p className="text-sm text-muted-foreground">{t('app.loading')}</p>
       ) : !items || items.length === 0 ? (
         <p className="rounded-md border border-dashed p-3 text-sm text-muted-foreground">
-          Пресетов пока нет.
+          {t('presets.empty')}
         </p>
       ) : (
         <ul className="space-y-1">
@@ -99,7 +99,7 @@ export function MedicationPresetsSettings() {
               isLast={idx === items.length - 1}
               onMoveUp={() => move(p, -1)}
               onMoveDown={() => move(p, +1)}
-              onDelete={() => void handleDelete(p)}
+              onDelete={() => setConfirmDelete(p)}
               onRename={(name) => update.mutate({ id: p.id, patch: { name } })}
             />
           ))}
@@ -109,11 +109,11 @@ export function MedicationPresetsSettings() {
       {newName !== null ? (
         <div className="flex items-end gap-2 rounded-md border border-dashed bg-card/40 p-2">
           <div className="flex-1 space-y-1">
-            <label className="text-xs text-muted-foreground">Название</label>
+            <label className="text-xs text-muted-foreground">{t('presets.name')}</label>
             <Input
               autoFocus
               value={newName}
-              placeholder="Сертралин / Венлафаксин / …"
+              placeholder={t('presets.name_placeholder')}
               onChange={(e) => setNewName(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') void handleCreate()
@@ -122,20 +122,28 @@ export function MedicationPresetsSettings() {
             />
           </div>
           <Button size="sm" onClick={() => void handleCreate()} disabled={create.isPending}>
-            Добавить
+            {t('common.add')}
           </Button>
           <Button size="sm" variant="ghost" onClick={() => setNewName(null)}>
-            Отмена
+            {t('common.cancel')}
           </Button>
         </div>
       ) : (
         <Button variant="outline" size="sm" onClick={() => setNewName('')}>
           <Plus className="size-4" />
-          Добавить
+          {t('common.add')}
         </Button>
       )}
 
       {error && <p className="text-sm text-destructive">{error}</p>}
+
+      <ConfirmDestructiveDialog
+        open={confirmDelete !== null}
+        itemLabel={t('presets.delete_confirm', { name: confirmDelete?.name ?? '' })}
+        busy={remove.isPending}
+        onCancel={() => setConfirmDelete(null)}
+        onConfirm={doDelete}
+      />
     </section>
   )
 }
@@ -159,6 +167,7 @@ function PresetRow({
   onDelete,
   onRename
 }: RowProps) {
+  const { t } = useTranslation()
   const [name, setName] = useState(preset.name)
 
   return (
@@ -193,7 +202,7 @@ function PresetRow({
               <ArrowUp className="size-3.5" />
             </Button>
           </TooltipTrigger>
-          <TooltipContent>Выше</TooltipContent>
+          <TooltipContent>{t('common.move_up')}</TooltipContent>
         </Tooltip>
         <Tooltip>
           <TooltipTrigger asChild>
@@ -207,7 +216,7 @@ function PresetRow({
               <ArrowDown className="size-3.5" />
             </Button>
           </TooltipTrigger>
-          <TooltipContent>Ниже</TooltipContent>
+          <TooltipContent>{t('common.move_down')}</TooltipContent>
         </Tooltip>
         <Tooltip>
           <TooltipTrigger asChild>
@@ -220,7 +229,7 @@ function PresetRow({
               <Trash2 className="size-3.5" />
             </Button>
           </TooltipTrigger>
-          <TooltipContent>Удалить</TooltipContent>
+          <TooltipContent>{t('common.delete')}</TooltipContent>
         </Tooltip>
       </div>
     </li>

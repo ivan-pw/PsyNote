@@ -12,6 +12,7 @@
  *  - «+ Добавить цвет» — открывает форму создания внизу списка.
  */
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { ArrowDown, ArrowUp, Plus, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -29,9 +30,11 @@ import {
 } from '@/hooks/useColors'
 import { colorsApi } from '@/api/colors'
 import { ReplaceColorDialog } from './ReplaceColorDialog'
+import { ConfirmDestructiveDialog } from '@/components/ConfirmDestructiveDialog'
 import type { NoteColor } from '@shared/types'
 
 export function ColorPaletteSettings() {
+  const { t } = useTranslation()
   const { data: colors, isLoading } = useColors()
   const create = useCreateColor()
   const update = useUpdateColor()
@@ -45,14 +48,14 @@ export function ColorPaletteSettings() {
     others: NoteColor[]
     usageCount: number
   } | null>(null)
+  const [confirmDelete, setConfirmDelete] = useState<NoteColor | null>(null)
 
   async function handleDelete(c: NoteColor) {
     setError(null)
     try {
       const usage = await colorsApi.usageCount(c.id)
       if (usage === 0) {
-        if (!window.confirm(`Удалить цвет «${c.label}»?`)) return
-        await remove.mutateAsync({ fromId: c.id, toId: null })
+        setConfirmDelete(c)
       } else {
         setReplaceState({
           target: c,
@@ -89,13 +92,10 @@ export function ColorPaletteSettings() {
 
   return (
     <section className="space-y-3">
-      <p className="text-xs text-muted-foreground">
-        Каждая заметка может быть помечена цветом из палитры. К каждому цвету
-        привязана текстовая подпись-бейдж.
-      </p>
+      <p className="text-xs text-muted-foreground">{t('colors.description')}</p>
 
       {isLoading ? (
-        <p className="text-sm text-muted-foreground">Загрузка…</p>
+        <p className="text-sm text-muted-foreground">{t('app.loading')}</p>
       ) : (
         <ul className="space-y-1">
           {(colors ?? []).map((c, idx) => (
@@ -116,7 +116,7 @@ export function ColorPaletteSettings() {
       {newColor ? (
         <div className="flex items-end gap-2 rounded-md border border-dashed bg-card/40 p-2">
           <div className="space-y-1">
-            <label className="text-xs text-muted-foreground">Цвет</label>
+            <label className="text-xs text-muted-foreground">{t('colors.color')}</label>
             <Input
               type="color"
               value={newColor.hex}
@@ -125,11 +125,11 @@ export function ColorPaletteSettings() {
             />
           </div>
           <div className="flex-1 space-y-1">
-            <label className="text-xs text-muted-foreground">Подпись</label>
+            <label className="text-xs text-muted-foreground">{t('colors.label')}</label>
             <Input
               value={newColor.label}
               autoFocus
-              placeholder="Срочно / Идея / …"
+              placeholder={t('colors.label_placeholder')}
               onChange={(e) => setNewColor({ ...newColor, label: e.target.value })}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') void handleCreate()
@@ -138,10 +138,10 @@ export function ColorPaletteSettings() {
             />
           </div>
           <Button size="sm" onClick={() => void handleCreate()} disabled={create.isPending}>
-            Добавить
+            {t('common.add')}
           </Button>
           <Button size="sm" variant="ghost" onClick={() => setNewColor(null)}>
-            Отмена
+            {t('common.cancel')}
           </Button>
         </div>
       ) : (
@@ -151,7 +151,7 @@ export function ColorPaletteSettings() {
           onClick={() => setNewColor({ hex: '#888888', label: '' })}
         >
           <Plus className="size-4" />
-          Добавить цвет
+          {t('colors.add')}
         </Button>
       )}
 
@@ -163,6 +163,23 @@ export function ColorPaletteSettings() {
         others={replaceState?.others ?? []}
         usageCount={replaceState?.usageCount ?? 0}
         onClose={() => setReplaceState(null)}
+      />
+
+      <ConfirmDestructiveDialog
+        open={confirmDelete !== null}
+        itemLabel={t('colors.delete_confirm', { label: confirmDelete?.label ?? '' })}
+        busy={remove.isPending}
+        onCancel={() => setConfirmDelete(null)}
+        onConfirm={async () => {
+          if (!confirmDelete) return
+          try {
+            await remove.mutateAsync({ fromId: confirmDelete.id, toId: null })
+            setConfirmDelete(null)
+          } catch (err) {
+            setError(err instanceof Error ? err.message : String(err))
+            setConfirmDelete(null)
+          }
+        }}
       />
     </section>
   )
@@ -187,6 +204,7 @@ function ColorRow({
   onDelete,
   onPatch
 }: RowProps) {
+  const { t } = useTranslation()
   const [label, setLabel] = useState(color.label)
   const [hex, setHex] = useState(color.hex)
 
@@ -230,7 +248,7 @@ function ColorRow({
               <ArrowUp className="size-3.5" />
             </Button>
           </TooltipTrigger>
-          <TooltipContent>Выше</TooltipContent>
+          <TooltipContent>{t('common.move_up')}</TooltipContent>
         </Tooltip>
         <Tooltip>
           <TooltipTrigger asChild>
@@ -244,7 +262,7 @@ function ColorRow({
               <ArrowDown className="size-3.5" />
             </Button>
           </TooltipTrigger>
-          <TooltipContent>Ниже</TooltipContent>
+          <TooltipContent>{t('common.move_down')}</TooltipContent>
         </Tooltip>
         <Tooltip>
           <TooltipTrigger asChild>
@@ -257,7 +275,7 @@ function ColorRow({
               <Trash2 className="size-3.5" />
             </Button>
           </TooltipTrigger>
-          <TooltipContent>Удалить</TooltipContent>
+          <TooltipContent>{t('common.delete')}</TooltipContent>
         </Tooltip>
       </div>
     </li>

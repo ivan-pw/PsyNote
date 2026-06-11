@@ -22,7 +22,7 @@ import { PASSWORD_MIN_LENGTH, checkPasswordStrength } from '@/lib/passwordStreng
 const DEFAULT_AUTOLOCK_MIN = 15
 
 export function SecuritySettings() {
-  useTranslation() // подключаемся к контексту локали — на будущее
+  const { t } = useTranslation()
   const [oldP, setOldP] = useState('')
   const [newP, setNewP] = useState('')
   const [newP2, setNewP2] = useState('')
@@ -38,25 +38,22 @@ export function SecuritySettings() {
   async function handleChangePassword(e: React.FormEvent) {
     e.preventDefault()
     if (newP !== newP2) {
-      toast.error('Новые пароли не совпадают')
+      toast.error(t('security.passwords_mismatch'))
       return
     }
     if (newP.length < PASSWORD_MIN_LENGTH) {
-      toast.error(`Новый пароль должен быть не короче ${PASSWORD_MIN_LENGTH} символов`)
+      toast.error(t('security.new_password_min', { min: PASSWORD_MIN_LENGTH }))
       return
     }
     const strength = checkPasswordStrength(newP)
     if (!strength.ok) {
-      toast.error(
-        strength.hints[0] ??
-          'Пароль слишком предсказуем — добавьте уникальных слов или символов'
-      )
+      toast.error(strength.hints[0] ?? t('unlock.error_predictable'))
       return
     }
     setBusy(true)
     try {
       await authApi.changePassword(oldP, newP)
-      toast.success('Пароль обновлён')
+      toast.success(t('security.password_updated'))
       setOldP('')
       setNewP('')
       setNewP2('')
@@ -77,15 +74,14 @@ export function SecuritySettings() {
       {/* — Смена пароля — */}
       <form onSubmit={handleChangePassword} className="space-y-3">
         <div>
-          <h3 className="text-sm font-semibold">Смена пароля</h3>
+          <h3 className="text-sm font-semibold">{t('security.change_password_title')}</h3>
           <p className="text-xs text-muted-foreground">
-            Перешифровывает базу данных новым паролем. Уже созданные резервные
-            копии продолжат открываться со старым паролем.
+            {t('security.change_password_description')}
           </p>
         </div>
         <div className="grid max-w-md grid-cols-1 gap-3">
           <div className="space-y-1">
-            <Label htmlFor="old-p">Текущий пароль</Label>
+            <Label htmlFor="old-p">{t('security.current_password')}</Label>
             <Input
               id="old-p"
               type="password"
@@ -95,7 +91,7 @@ export function SecuritySettings() {
             />
           </div>
           <div className="space-y-1">
-            <Label htmlFor="new-p">Новый пароль</Label>
+            <Label htmlFor="new-p">{t('security.new_password')}</Label>
             <Input
               id="new-p"
               type="password"
@@ -106,7 +102,7 @@ export function SecuritySettings() {
             <PasswordStrengthMeter password={newP} className="mt-1.5" />
           </div>
           <div className="space-y-1">
-            <Label htmlFor="new-p2">Повторите новый пароль</Label>
+            <Label htmlFor="new-p2">{t('security.repeat_new_password')}</Label>
             <Input
               id="new-p2"
               type="password"
@@ -119,7 +115,7 @@ export function SecuritySettings() {
             {busy ? '…' : (
               <>
                 <Save className="size-4" />
-                Сменить пароль
+                {t('security.change_password')}
               </>
             )}
           </Button>
@@ -129,10 +125,9 @@ export function SecuritySettings() {
       {/* — Автоблокировка — */}
       <div className="space-y-3 border-t pt-6">
         <div>
-          <h3 className="text-sm font-semibold">Автоблокировка</h3>
+          <h3 className="text-sm font-semibold">{t('security.autolock_title')}</h3>
           <p className="text-xs text-muted-foreground">
-            При бездействии (нет ввода и движения мыши) приложение закрывает
-            базу данных и просит ввести пароль заново. По умолчанию выключено.
+            {t('security.autolock_description')}
           </p>
         </div>
 
@@ -143,12 +138,12 @@ export function SecuritySettings() {
             onChange={(e) => setAutolockEnabled.mutate(e.target.checked)}
             className="size-4"
           />
-          Блокировать доступ при бездействии
+          {t('security.autolock_toggle')}
         </label>
 
         <div className="flex max-w-md items-end gap-2">
           <div className="space-y-1">
-            <Label htmlFor="autolock">Таймаут, минут</Label>
+            <Label htmlFor="autolock">{t('security.autolock_timeout')}</Label>
             <Input
               id="autolock"
               type="number"

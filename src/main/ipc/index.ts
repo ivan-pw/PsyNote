@@ -11,6 +11,7 @@ import { registerAuthIpc } from './auth'
 import { registerBackupIpc } from './backup'
 import { registerClientsIpc } from './clients'
 import { registerColorsIpc } from './colors'
+import { registerEulaIpc } from './eula'
 import { registerMedicationPresetsIpc } from './medicationPresets'
 import { registerMeetingProtocolsIpc } from './meetingProtocols'
 import { registerMeetingsIpc } from './meetings'
@@ -22,6 +23,7 @@ import { registerTimelineIpc } from './timeline'
 
 export function registerAllIpc(): void {
   registerAppIpc()
+  registerEulaIpc()
   registerAuthIpc()
   registerClientsIpc()
   registerRevisionsIpc()

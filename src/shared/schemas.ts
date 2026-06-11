@@ -40,6 +40,14 @@ const isoDate = z
   .nullish()
   .transform((v) => v || null)
 const fieldKey = z.enum(HISTORIZED_FIELDS)
+// Год рождения: для ввода «только возраст». Диапазон с запасом.
+const birthYear = z
+  .number()
+  .int()
+  .min(1900, 'Год рождения слишком давний')
+  .max(2100, 'Год рождения некорректен')
+  .nullish()
+  .transform((v) => v ?? null)
 
 // ─── Clients ─────────────────────────────────────────────────────────────────
 export const clientsListInput = z
@@ -51,13 +59,15 @@ export const clientGetInput = z.object({ id })
 export const clientCreateInput = z.object({
   full_name: z.string().trim().min(1, 'Имя обязательно').max(200),
   birth_date: isoDate,
+  birth_year: birthYear,
   notes_short: trimmedOptText,
   phone: trimmedOptText,
   email: trimmedOptText,
   messenger: trimmedOptText,
   video_link: trimmedOptText,
   diagnosis: trimmedOptText,
-  medications: trimmedOptText
+  medications: trimmedOptText,
+  doctor: trimmedOptText
 })
 
 export const clientUpdateProfileInput = z.object({
@@ -65,6 +75,7 @@ export const clientUpdateProfileInput = z.object({
   patch: z.object({
     full_name: z.string().trim().min(1).max(200).optional(),
     birth_date: isoDate,
+    birth_year: birthYear,
     notes_short: trimmedOptText
   })
 })
@@ -277,6 +288,11 @@ export const searchQueryInput = z.object({
   q: z.string().trim().min(1).max(200),
   entities: z.array(searchEntityKind).optional(),
   limit: z.number().int().positive().max(100).optional()
+})
+
+// ─── EULA ───────────────────────────────────────────────────────────────────
+export const eulaAcceptInput = z.object({
+  version: z.number().int().positive().max(10_000)
 })
 
 // ─── Settings (полноценный k/v IPC) ─────────────────────────────────────────
